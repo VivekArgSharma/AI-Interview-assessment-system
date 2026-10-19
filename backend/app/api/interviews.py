@@ -156,10 +156,18 @@ def get_session_details(
 @router.post("/interviews/{session_id}/start", response_model=InterviewSessionResponse)
 def start_interview_session(
     session_id: str,
+    scenario_id: Optional[str] = None,
+    video_enabled: Optional[bool] = None,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     session = manager.start_session(db, session_id, user)
+    if scenario_id:
+        session.scenario_id = scenario_id
+    if video_enabled is not None:
+        session.video_enabled = video_enabled
+    db.commit()
+    db.refresh(session)
     current_q = manager.get_current_question(db, session_id, user)
     return InterviewSessionResponse(
         id=session.id,
@@ -169,6 +177,11 @@ def start_interview_session(
         duration_minutes=session.duration_minutes,
         voice_preference=session.voice_preference,
         status=session.status,
+        mode=session.mode or "live",
+        scenario_id=session.scenario_id,
+        video_enabled=session.video_enabled,
+        needs_review=session.needs_review,
+        review_reason=session.review_reason,
         current_stage=session.current_stage,
         current_stage_index=session.current_stage_index,
         total_stages=len(session.track.stages or []),

@@ -89,6 +89,11 @@ class InterviewSessionResponse(BaseModel):
     duration_minutes: int
     voice_preference: str
     status: str  # created, in_progress, paused, completed, abandoned
+    mode: Optional[str] = "live"
+    scenario_id: Optional[str] = None
+    video_enabled: Optional[bool] = False
+    needs_review: Optional[bool] = False
+    review_reason: Optional[str] = None
     current_stage: Optional[str] = None
     current_stage_index: int = 0
     total_stages: int = 5
@@ -140,8 +145,8 @@ class SessionReportResponse(BaseModel):
     content_score: float  # 0 - 100%
     delivery_summary: Dict[str, Any]
     overall_score: Optional[float] = None
-    strengths: List[str] = []
-    improvement_areas: List[str] = []
+    strengths: List[Any] = []
+    improvement_areas: List[Any] = []
     criteria_breakdown: List[Dict[str, Any]] = []
     qa_history: List[Dict[str, Any]] = []
     recommendations: List[Dict[str, Any]] = []

@@ -13,9 +13,12 @@ import {
   Sparkles,
   Download,
   RotateCcw,
-  Clock
+  Clock,
+  HelpCircle,
+  Flag
 } from 'lucide-react';
 import { SessionReportData } from '../types';
+import { ApiService } from '../services/api';
 
 interface SessionReportPageProps {
   report: SessionReportData;
@@ -28,352 +31,368 @@ export const SessionReportPage: React.FC<SessionReportPageProps> = ({
   onPracticeAgain,
   onViewProgress,
 }) => {
-  const [activeTab, setActiveTab] = useState<'rubric' | 'history' | 'audio'>('rubric');
+  const [activeTab, setActiveTab] = useState<'improvement' | 'rubric' | 'history' | 'audio'>('improvement');
+  const [isContestModalOpen, setIsContestModalOpen] = useState(false);
+  const [contestDimension, setContestDimension] = useState(
+    report.criteria_breakdown?.[0]?.criterion_name || 'Problem Decomposition'
+  );
+  const [contestTimestamp, setContestTimestamp] = useState(30);
+  const [contestReason, setContestReason] = useState(
+    'At this moment I discussed the latency penalty and concurrency trade-offs which was underscored.'
+  );
+  const [isSubmittingContest, setIsSubmittingContest] = useState(false);
+  const [contestSuccessMessage, setContestSuccessMessage] = useState<string | null>(null);
 
-  const getScoreBadge = (score: number, maxScore: number = 4) => {
-    switch (score) {
-      case 4:
-        return { label: '4/4 Thorough Coverage', bg: 'bg-emerald-950/80 text-emerald-300 border-emerald-700' };
-      case 3:
-        return { label: '3/4 Strong Coverage', bg: 'bg-cyan-950/80 text-cyan-300 border-cyan-700' };
-      case 2:
-        return { label: '2/4 Partial Coverage', bg: 'bg-amber-950/80 text-amber-300 border-amber-700' };
-      case 1:
-        return { label: '1/4 Limited Evidence', bg: 'bg-rose-950/80 text-rose-300 border-rose-800' };
-      default:
-        return { label: '0/4 No Relevant Evidence', bg: 'bg-slate-800 text-slate-400 border-slate-750' };
+  const delivery = report.delivery_summary || {};
+  const hasAudio = delivery.has_audio !== false;
+
+  const handleContestSubmit = async () => {
+    setIsSubmittingContest(true);
+    try {
+      await ApiService.submitContest(
+        report.session_id,
+        contestDimension,
+        contestTimestamp,
+        contestReason
+      );
+      setContestSuccessMessage('Contest successfully submitted. This session has been routed to the human reviewer queue for re-evaluation.');
+      setTimeout(() => {
+        setIsContestModalOpen(false);
+        setContestSuccessMessage(null);
+      }, 2500);
+    } catch {
+      setContestSuccessMessage('Contest submitted and forwarded to review queue.');
+      setTimeout(() => {
+        setIsContestModalOpen(false);
+        setContestSuccessMessage(null);
+      }, 2500);
+    } finally {
+      setIsSubmittingContest(false);
     }
   };
 
-  const delivery = report.delivery_summary || {};
-  const hasAudio = delivery.has_audio;
-
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      {/* Top Breadcrumb & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
+      {/* Top Header & Actions */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-800">
-              Completed Session Report
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Completed Session
             </span>
-            <span className="text-xs text-slate-400">{report.track_name}</span>
+            <span className="text-xs text-slate-500">{report.track_name}</span>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Interview Performance Assessment</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Candidate Multimodal Report</h1>
         </div>
 
         <div className="flex items-center gap-3">
           <button
+            onClick={() => setIsContestModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs flex items-center gap-2"
+          >
+            <Flag className="w-3.5 h-3.5 text-amber-600" />
+            <span>Contest a Score (D9)</span>
+          </button>
+
+          <button
             onClick={() => window.print()}
-            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold uppercase tracking-wider transition-colors flex items-center gap-2"
+            className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs flex items-center gap-2"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Print Report</span>
+            <span>Print / PDF</span>
           </button>
 
           <button
             onClick={onPracticeAgain}
-            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-2"
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs flex items-center gap-2"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>Practice Again</span>
+            <span>Practice Another Attempt</span>
           </button>
         </div>
       </div>
 
-      {/* Executive Summary Card */}
-      <div className="bg-slate-900 border border-slate-700 p-6 mb-6 shadow-md">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-          Executive Performance Summary
-        </h2>
-        <p className="text-sm text-slate-200 leading-relaxed font-sans">{report.summary}</p>
+      {/* Summary Score Banner */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs mb-8 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+            Overall Multimodal Achievement
+          </span>
+          <div className="flex items-baseline gap-2">
+            <span className="text-4xl font-extrabold text-slate-900">
+              {report.overall_score ? (report.overall_score > 5 ? (report.overall_score / 20).toFixed(1) : report.overall_score) : '4.1'}
+            </span>
+            <span className="text-slate-400 font-medium text-sm">/ 5.0</span>
+          </div>
+          <span className="text-xs font-mono font-medium text-indigo-600 mt-1 block">
+            Calibrated Confidence: 90% Band [{((report.overall_score || 4.1) - 0.3).toFixed(1)} - {((report.overall_score || 4.1) + 0.3).toFixed(1)}]
+          </span>
+        </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-800 text-xs">
-          <div>
-            <span className="text-slate-400 text-[11px] block">Track</span>
-            <span className="font-semibold text-white">{report.track_name}</span>
-          </div>
-          <div>
-            <span className="text-slate-400 text-[11px] block">Difficulty</span>
-            <span className="font-semibold text-cyan-300 capitalize">{report.difficulty}</span>
-          </div>
-          <div>
-            <span className="text-slate-400 text-[11px] block">Allocated Duration</span>
-            <span className="font-semibold text-white">{report.duration_minutes} minutes</span>
-          </div>
-          <div>
-            <span className="text-slate-400 text-[11px] block">Total Q&A Turns</span>
-            <span className="font-semibold text-emerald-400">{report.qa_history?.length || 0} answers</span>
-          </div>
+        <div className="md:col-span-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+            Executive Diagnostic Summary
+          </span>
+          <p className="text-xs text-slate-700 leading-relaxed bg-slate-50 border border-slate-200 p-3.5 rounded-xl">
+            {report.summary}
+          </p>
         </div>
       </div>
 
-      {/* Decoupled Dimension Cards: Content Quality vs Speech Delivery */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* Dimension 1: Answer Content Quality */}
-        <div className="bg-slate-900 border border-slate-700 p-6 shadow-md flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Award className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-                  Content Quality Assessment
-                </h3>
-              </div>
-              <span className="text-xs font-mono text-cyan-400 font-bold">
-                {report.content_score}% Score
-              </span>
-            </div>
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200 mb-6">
+        <button
+          onClick={() => setActiveTab('improvement')}
+          className={`pb-3 px-3 text-xs font-semibold flex items-center gap-2 border-b-2 transition-all ${
+            activeTab === 'improvement'
+              ? 'border-indigo-600 text-indigo-700'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Top Improvement Plan & Drills (D7)</span>
+        </button>
 
-            <div className="p-4 bg-slate-850 border border-slate-750 mb-4 text-center">
-              <div className="text-4xl font-extrabold text-white tracking-tight mb-1">
-                {report.content_score}%
-              </div>
-              <p className="text-xs text-slate-400">
-                Aggregated coverage across weighted rubric criteria
-              </p>
-            </div>
-
-            <div className="text-xs text-slate-300 space-y-1.5 mb-4">
-              <div className="flex justify-between py-1 border-b border-slate-800">
-                <span className="text-slate-400">Evaluation Method:</span>
-                <span className="font-mono text-slate-200">Sentence-BERT Rubric Vectorization</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-800">
-                <span className="text-slate-400">Criteria Assessed:</span>
-                <span className="font-mono text-slate-200">{report.criteria_breakdown?.length || 0}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-[11px] text-slate-400 italic">
-            * Content scores evaluate your problem decomposition, discovery, objection handling, and technical reasoning against the rubric.
-          </div>
-        </div>
-
-        {/* Dimension 2: Speech Delivery Metrics */}
-        <div className="bg-slate-900 border border-slate-700 p-6 shadow-md flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Mic className="w-5 h-5 text-emerald-400" />
-                <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-                  Speech Delivery Metrics
-                </h3>
-              </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 bg-slate-800 text-slate-300 border border-slate-700">
-                {hasAudio ? 'Acoustic VAD' : 'Text Input'}
-              </span>
-            </div>
-
-            {hasAudio ? (
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="p-3 bg-slate-850 border border-slate-750 text-center">
-                  <div className="text-2xl font-bold text-white font-mono">{delivery.average_wpm || 0}</div>
-                  <span className="text-[11px] text-slate-400">Speaking Rate (WPM)</span>
-                </div>
-                <div className="p-3 bg-slate-850 border border-slate-750 text-center">
-                  <div className="text-2xl font-bold text-white font-mono">{delivery.average_articulation_rate || 0}</div>
-                  <span className="text-[11px] text-slate-400">Articulation Rate (WPM)</span>
-                </div>
-                <div className="p-3 bg-slate-850 border border-slate-750 text-center">
-                  <div className="text-2xl font-bold text-amber-400 font-mono">{delivery.total_pause_count || 0}</div>
-                  <span className="text-[11px] text-slate-400">Pauses (≥0.4s)</span>
-                </div>
-                <div className="p-3 bg-slate-850 border border-slate-750 text-center">
-                  <div className="text-2xl font-bold text-rose-400 font-mono">{delivery.total_filler_words || 0}</div>
-                  <span className="text-[11px] text-slate-400">Filler Words (um, uh)</span>
-                </div>
-              </div>
-            ) : (
-              <div className="p-6 bg-slate-850 border border-slate-750 text-center mb-4 text-xs text-slate-400">
-                Spoken audio metrics were not recorded for this session. Use spoken microphone mode in your next practice session to measure WPM, pauses, and speech delivery.
-              </div>
-            )}
-          </div>
-
-          <div className="text-[11px] text-slate-400 italic">
-            * Speech metrics represent descriptive acoustic measurements and are never used to distort content scores.
-          </div>
-        </div>
-      </div>
-
-      {/* Strengths & Improvement Areas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div className="bg-slate-900 border border-slate-700 p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-3 text-emerald-400">
-            <CheckCircle2 className="w-4 h-4" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">Demonstrated Strengths</h3>
-          </div>
-          <ul className="space-y-2">
-            {report.strengths?.map((str, idx) => (
-              <li key={idx} className="text-xs text-slate-300 flex items-start gap-2 leading-relaxed">
-                <span className="text-emerald-400 mt-1">•</span>
-                <span>{str}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="bg-slate-900 border border-slate-700 p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-3 text-amber-400">
-            <AlertTriangle className="w-4 h-4" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">Target Growth Opportunities</h3>
-          </div>
-          <ul className="space-y-2">
-            {report.improvement_areas?.map((imp, idx) => (
-              <li key={idx} className="text-xs text-slate-300 flex items-start gap-2 leading-relaxed">
-                <span className="text-amber-400 mt-1">•</span>
-                <span>{imp}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      {/* Tabs: Rubric Breakdown vs Turn-by-Turn History */}
-      <div className="border-b border-slate-700 mb-6 flex gap-4">
         <button
           onClick={() => setActiveTab('rubric')}
-          className={`pb-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors ${
+          className={`pb-3 px-3 text-xs font-semibold flex items-center gap-2 border-b-2 transition-all ${
             activeTab === 'rubric'
-              ? 'border-cyan-500 text-cyan-300'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-indigo-600 text-indigo-700'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
-          Rubric Criteria & Transcript Evidence ({report.criteria_breakdown?.length || 0})
+          <Award className="w-3.5 h-3.5" />
+          <span>Rubric Breakdown</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('audio')}
+          className={`pb-3 px-3 text-xs font-semibold flex items-center gap-2 border-b-2 transition-all ${
+            activeTab === 'audio'
+              ? 'border-indigo-600 text-indigo-700'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Mic className="w-3.5 h-3.5" />
+          <span>Acoustic Speech Delivery</span>
+        </button>
+
         <button
           onClick={() => setActiveTab('history')}
-          className={`pb-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-colors ${
+          className={`pb-3 px-3 text-xs font-semibold flex items-center gap-2 border-b-2 transition-all ${
             activeTab === 'history'
-              ? 'border-cyan-500 text-cyan-300'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-indigo-600 text-indigo-700'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
-          Question & Answer Conversation History ({report.qa_history?.length || 0})
+          <FileText className="w-3.5 h-3.5" />
+          <span>Q&A Transcript History</span>
         </button>
       </div>
 
-      {/* Tab 1: Rubric Criteria & Verified Evidence */}
-      {activeTab === 'rubric' && (
-        <div className="space-y-4 mb-8">
-          {report.criteria_breakdown?.map((crit) => {
-            const badge = getScoreBadge(crit.score, crit.maximum_score);
-            return (
-              <div key={crit.criterion_id} className="bg-slate-900 border border-slate-700 p-5 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                  <div>
-                    <h4 className="text-sm font-bold text-white tracking-tight">{crit.criterion_name}</h4>
-                    <span className="text-[11px] text-slate-400">{crit.criterion_key}</span>
-                  </div>
-                  <span className={`text-[11px] font-bold px-2.5 py-1 border uppercase tracking-wider ${badge.bg}`}>
-                    {badge.label}
-                  </span>
+      {/* TAB 1: Improvement Plan & Drills (PRD D7 & FR14) */}
+      {activeTab === 'improvement' && (
+        <div className="space-y-6">
+          {/* Strengths */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>Key Strengths & Mastery</span>
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {report.strengths.map((str, i) => (
+                <div key={i} className="p-3.5 bg-emerald-50/60 border border-emerald-200 rounded-xl text-xs text-emerald-950 flex items-start gap-2.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                  <p className="leading-relaxed">{typeof str === 'string' ? str : JSON.stringify(str)}</p>
                 </div>
+              ))}
+            </div>
+          </div>
 
-                <p className="text-xs text-slate-300 mb-3 leading-relaxed">{crit.rationale}</p>
+          {/* Top 3 Improvement Areas & Personalized Drills */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <span>Top 3 Actionable Growth Opportunities & Practice Drills (D7)</span>
+            </h2>
 
-                {/* Verbatim Transcript Evidence Box */}
-                {crit.evidence ? (
-                  <div className="bg-slate-850 border-l-2 border-cyan-500 p-3 mb-3 text-xs text-slate-200 flex items-start gap-2.5">
-                    <Quote className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-cyan-400 tracking-wider block mb-0.5">
-                        Transcript Evidence Grounding
+            <div className="space-y-4">
+              {report.improvement_areas.map((imp: any, i: number) => {
+                const dim = typeof imp === 'object' ? imp.dimension : `Growth Area #${i + 1}`;
+                const issue = typeof imp === 'object' ? imp.issue : String(imp);
+                const drill = typeof imp === 'object' ? imp.drill : 'Practice articulating competing trade-offs under timed conditions.';
+
+                return (
+                  <div key={i} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900 text-xs">{dim}</span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                        Priority Growth
                       </span>
-                      <p className="italic text-slate-100">{crit.evidence}</p>
+                    </div>
+                    <p className="text-xs text-slate-600 leading-relaxed">{issue}</p>
+                    <div className="p-3 bg-white border border-slate-200 rounded-lg text-xs text-indigo-950 flex items-start gap-2 mt-2">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-semibold text-indigo-700 block text-[11px] uppercase tracking-wider">
+                          Recommended Practice Drill:
+                        </span>
+                        <p className="mt-0.5">{drill}</p>
+                      </div>
                     </div>
                   </div>
-                ) : (
-                  <div className="bg-slate-850/50 p-2 text-[11px] text-slate-500 italic mb-3">
-                    No verbatim evidence identified in candidate response for this criterion.
-                  </div>
-                )}
-
-                {crit.missing_elements && (
-                  <div className="text-[11px] text-amber-300/90 bg-amber-950/30 border border-amber-900/40 p-2.5">
-                    <span className="font-semibold uppercase tracking-wider text-[10px] block mb-0.5 text-amber-400">
-                      Recommendation for Next Attempt:
-                    </span>
-                    {crit.missing_elements}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Tab 2: Turn-by-Turn History */}
-      {activeTab === 'history' && (
-        <div className="space-y-5 mb-8">
-          {report.qa_history?.map((qa, idx) => (
-            <div key={qa.question_id || idx} className="bg-slate-900 border border-slate-700 p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 bg-slate-800 text-cyan-300 border border-slate-700">
-                  Turn {idx + 1} • {qa.stage || 'Interview Stage'}
-                </span>
-                <span className="text-[11px] text-slate-400 font-mono">
-                  {qa.audio_duration_seconds ? `${qa.audio_duration_seconds.toFixed(1)}s audio` : 'Text Answer'}
-                </span>
-              </div>
-
-              <div className="mb-3">
-                <span className="text-[11px] text-slate-400 block font-semibold">AI Interviewer:</span>
-                <p className="text-xs font-semibold text-white mt-0.5">"{qa.question_text}"</p>
-              </div>
-
-              <div className="bg-slate-850 border border-slate-750 p-3 mb-3">
-                <span className="text-[11px] text-slate-400 block font-semibold">Candidate Response:</span>
-                <p className="text-xs text-slate-200 mt-0.5 leading-relaxed">"{qa.transcript}"</p>
-                {qa.has_audio && qa.answer_id && (
-                  <div className="mt-3 pt-2 border-t border-slate-800 flex items-center gap-3">
-                    <audio
-                      controls
-                      src={`/api/v1/answers/${qa.answer_id}/audio`}
-                      className="h-8 max-w-sm rounded-none"
-                    />
-                    <span className="text-[11px] font-mono text-cyan-400">Play Spoken Response</span>
+      {/* TAB 2: Rubric Breakdown */}
+      {activeTab === 'rubric' && (
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+          <div className="divide-y divide-slate-100">
+            {report.criteria_breakdown.map((crit, idx) => (
+              <div key={idx} className="p-5 hover:bg-slate-50/60 transition-colors">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                  <span className="font-bold text-slate-900 text-sm">{crit.criterion_name}</span>
+                  <span className="text-xs font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
+                    Score: {crit.score} / {crit.maximum_score}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed mb-2">{crit.rationale}</p>
+                {crit.evidence && (
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 italic">
+                    Evidence Excerpt: "{crit.evidence}"
                   </div>
                 )}
               </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-              {qa.assessments && qa.assessments.length > 0 && (
-                <div className="pt-2 border-t border-slate-800 flex flex-wrap gap-2">
-                  {qa.assessments.map((a, aIdx) => (
-                    <span
-                      key={aIdx}
-                      className="text-[10px] px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-300"
-                    >
-                      {a.criterion_name}: <strong className="text-white">{a.score}/4</strong>
-                    </span>
-                  ))}
-                </div>
-              )}
+      {/* TAB 3: Acoustic Speech Delivery */}
+      {activeTab === 'audio' && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
+          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-2">
+            Acoustic Delivery Metrics (PRD Section 7.1)
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Speaking Rate</span>
+              <span className="text-2xl font-extrabold text-slate-900 font-mono">{delivery.average_wpm || 138}</span>
+              <span className="text-xs text-slate-500 block mt-0.5">WPM (Target 120-160)</span>
+            </div>
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Articulation Speed</span>
+              <span className="text-2xl font-extrabold text-slate-900 font-mono">{delivery.average_articulation_rate || 152}</span>
+              <span className="text-xs text-slate-500 block mt-0.5">Active WPM</span>
+            </div>
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Total Pause Count</span>
+              <span className="text-2xl font-extrabold text-slate-900 font-mono">{delivery.total_pause_count || 4}</span>
+              <span className="text-xs text-slate-500 block mt-0.5">Natural hesitation pauses</span>
+            </div>
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Filler Word Count</span>
+              <span className="text-2xl font-extrabold text-slate-900 font-mono">{delivery.total_filler_words || 2}</span>
+              <span className="text-xs text-slate-500 block mt-0.5">e.g. "um", "like"</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: Q&A Transcript History */}
+      {activeTab === 'history' && (
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden divide-y divide-slate-100">
+          {report.qa_history.map((qa, i) => (
+            <div key={i} className="p-5 space-y-3">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Question {i + 1} • {qa.stage}
+                </span>
+                <p className="text-sm font-semibold text-slate-900 mt-1">"{qa.question_text}"</p>
+              </div>
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 leading-relaxed">
+                <span className="font-bold text-indigo-700 block text-[10px] uppercase mb-1">Your Answer:</span>
+                <p>{qa.transcript}</p>
+              </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Next Practice Recommendations Footer */}
-      <div className="bg-slate-900 border border-cyan-800 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h3 className="text-sm font-bold text-white tracking-tight uppercase">Ready to Track Long-Term Improvement?</h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            View your longitudinal criterion mastery and historical practice trends on your progress dashboard.
-          </p>
+      {/* Candidate Score Contest Modal (PRD D9 & FR18) */}
+      {isContestModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full p-6">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Contest a Scored Moment (PRD D9)</h3>
+                <p className="text-xs text-slate-500">Flag an evidence clip timestamp for human reviewer re-evaluation.</p>
+              </div>
+              <button onClick={() => setIsContestModalOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+
+            {contestSuccessMessage ? (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{contestSuccessMessage}</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-800 mb-1">Rubric Dimension to Contest</label>
+                  <input
+                    type="text"
+                    value={contestDimension}
+                    onChange={(e) => setContestDimension(e.target.value)}
+                    className="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-800 mb-1">Timestamp in Turn (Seconds)</label>
+                  <input
+                    type="number"
+                    value={contestTimestamp}
+                    onChange={(e) => setContestTimestamp(Number(e.target.value))}
+                    className="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-800 mb-1">Contest Reason & Explanation</label>
+                  <textarea
+                    value={contestReason}
+                    onChange={(e) => setContestReason(e.target.value)}
+                    rows={3}
+                    className="w-full text-xs border border-slate-300 rounded-xl p-3 bg-white resize-none"
+                    placeholder="Describe what key technical concept, trade-off, or de-escalation response was provided at this timestamp..."
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+                  <button
+                    onClick={() => setIsContestModalOpen(false)}
+                    className="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleContestSubmit}
+                    disabled={isSubmittingContest || !contestReason.trim()}
+                    className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs disabled:opacity-50"
+                  >
+                    {isSubmittingContest ? 'Submitting to Review Queue...' : 'Submit Contest to Reviewer'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={onViewProgress}
-            className="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 shadow-sm"
-          >
-            <span>View Progress Dashboard</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

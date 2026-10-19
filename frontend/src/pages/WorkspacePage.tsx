@@ -47,10 +47,11 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
   isAssessing,
   errorMessage,
 }) => {
-  const currentIndex = session.currentQuestionIndex;
-  const currentRecord = session.records[currentIndex];
-  const question: QuestionItem = currentRecord.question;
-  const answer = currentRecord.answer;
+  const records = session.records || [];
+  const currentIndex = session.currentQuestionIndex || 0;
+  const currentRecord = records[currentIndex] || {};
+  const question: QuestionItem = currentRecord.question || ({} as any);
+  const answer = currentRecord.answer || '';
   const assessment = currentRecord.assessment;
   const currentMode = currentRecord.mode || 'text';
 
@@ -153,7 +154,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
   };
 
   const isAnswerValid = answer.trim().length >= 5;
-  const isLastQuestion = currentIndex === session.records.length - 1;
+  const isLastQuestion = currentIndex === records.length - 1;
 
   return (
     <div className="max-w-4xl mx-auto py-4 space-y-5">
@@ -163,11 +164,11 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs uppercase font-mono font-bold tracking-wider text-slate-700">
-                {session.roleName} Track
+                {session.roleName || session.track_name || 'Interview'} Track
               </span>
               <span className="text-slate-400">&bull;</span>
               <span className="text-xs text-slate-500 font-mono">
-                Question {currentIndex + 1} of {session.records.length}
+                Question {currentIndex + 1} of {records.length || 1}
               </span>
             </div>
             <h2 className="text-xl font-bold text-slate-900 mt-1">Interview Workspace</h2>
@@ -175,12 +176,12 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
 
           {/* Navigation Pills - Square */}
           <div className="flex items-center gap-1.5 overflow-x-auto py-1">
-            {session.records.map((rec, idx) => {
+            {records.map((rec: any, idx: number) => {
               const isCurrent = idx === currentIndex;
-              const hasAssessed = rec.assessment !== null;
+              const hasAssessed = rec.assessment !== null && rec.assessment !== undefined;
               return (
                 <button
-                  key={rec.question.id}
+                  key={rec.question?.id || idx}
                   onClick={() => onNavigateQuestion(idx)}
                   className={`w-8 h-8 rounded-none flex items-center justify-center font-mono text-xs font-semibold cursor-pointer transition-colors ${
                     isCurrent
@@ -203,7 +204,7 @@ export const WorkspacePage: React.FC<WorkspacePageProps> = ({
           <div
             className="h-full bg-slate-900 transition-all duration-300"
             style={{
-              width: `${((currentIndex + 1) / session.records.length) * 100}%`,
+              width: `${((currentIndex + 1) / Math.max(1, records.length)) * 100}%`,
             }}
           />
         </div>

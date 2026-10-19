@@ -8,6 +8,7 @@ from .api.routes import router as legacy_router
 from .api.auth import router as auth_router, users_router
 from .api.interviews import router as interviews_router
 from .api.progress import router as progress_router
+from .api.prism import router as prism_router
 from .services.text_encoder import TextEncoder
 from .services.text_assessor import TextAssessor
 from .db.database import init_db
@@ -71,6 +72,7 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
 app.include_router(interviews_router, prefix="/api/v1")
 app.include_router(progress_router, prefix="/api/v1")
+app.include_router(prism_router, prefix="/api/v1")
 
 @app.get("/")
 def root():

@@ -39,7 +39,8 @@ export const ReportPage: React.FC<ReportPageProps> = ({
   onNavigateQuestion,
   onBackToWorkspace,
 }) => {
-  const record: SessionQuestionRecord = session.records[questionIndex];
+  const records = session.records || [];
+  const record: SessionQuestionRecord = records[questionIndex] || {};
   const assessment = record?.assessment;
   const question = record?.question;
   const audioAnalysis = assessment?.audio_analysis || record?.audioAnalysis;
@@ -84,7 +85,7 @@ export const ReportPage: React.FC<ReportPageProps> = ({
     },
   ];
 
-  const isLastQuestion = questionIndex === session.records.length - 1;
+  const isLastQuestion = questionIndex === records.length - 1;
 
   return (
     <div className="max-w-5xl mx-auto py-4 space-y-6">
@@ -101,7 +102,7 @@ export const ReportPage: React.FC<ReportPageProps> = ({
           <div className="flex items-center gap-2">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight uppercase">Assessment Report</h2>
             <span className="text-xs px-2.5 py-0.5 rounded-none bg-slate-100 text-slate-700 border border-slate-300 font-mono font-medium">
-              Q{questionIndex + 1} of {session.records.length}
+              Q{questionIndex + 1} of {records.length}
             </span>
             {isSpokenMode && (
               <span className="text-xs px-2.5 py-0.5 rounded-none bg-slate-100 text-slate-800 border border-slate-300 font-mono flex items-center gap-1">
@@ -123,10 +124,10 @@ export const ReportPage: React.FC<ReportPageProps> = ({
             Prev Q
           </button>
           <span className="text-xs text-slate-500 font-mono">
-            {questionIndex + 1}/{session.records.length}
+            {questionIndex + 1}/{records.length}
           </span>
           <button
-            onClick={() => onNavigateQuestion(Math.min(session.records.length - 1, questionIndex + 1))}
+            onClick={() => onNavigateQuestion(Math.min(records.length - 1, questionIndex + 1))}
             disabled={isLastQuestion}
             className="px-3 py-1.5 rounded-none bg-white border border-slate-300 text-xs font-semibold uppercase text-slate-700 hover:bg-slate-100 disabled:opacity-40"
           >
@@ -247,7 +248,7 @@ export const ReportPage: React.FC<ReportPageProps> = ({
       {isSpokenMode && audioAnalysis && (
         <AudioAnalysisCard
           analysis={audioAnalysis}
-          transcript={record.answer}
+          transcript={record.answer || ''}
           isEdited={record.isEditedTranscript}
           originalTranscript={record.originalTranscript || ''}
         />
@@ -266,13 +267,13 @@ export const ReportPage: React.FC<ReportPageProps> = ({
             </p>
           </div>
           <span className="text-xs text-slate-600 font-mono font-medium">
-            {assessment.rubric_breakdown.filter((r) => r.matched).length} of{' '}
+            {assessment.rubric_breakdown.filter((r: any) => r.matched).length} of{' '}
             {assessment.rubric_breakdown.length} Criteria Met
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {assessment.rubric_breakdown.map((criterion) => (
+          {assessment.rubric_breakdown.map((criterion: any) => (
             <RubricCard key={criterion.criterion_id} criterion={criterion} />
           ))}
         </div>
@@ -287,7 +288,7 @@ export const ReportPage: React.FC<ReportPageProps> = ({
             Demonstrated Strengths
           </h4>
           <ul className="space-y-2 text-xs text-slate-700">
-            {assessment.strengths.map((s, i) => (
+            {assessment.strengths.map((s: any, i: number) => (
               <li key={i} className="flex items-start gap-2 leading-relaxed">
                 <span className="w-1.5 h-1.5 rounded-none bg-emerald-600 shrink-0 mt-1.5" />
                 <span>{s}</span>
@@ -303,7 +304,7 @@ export const ReportPage: React.FC<ReportPageProps> = ({
             Areas for Improvement
           </h4>
           <ul className="space-y-2 text-xs text-slate-700">
-            {assessment.weaknesses.map((w, i) => (
+            {assessment.weaknesses.map((w: any, i: number) => (
               <li key={i} className="flex items-start gap-2 leading-relaxed">
                 <span className="w-1.5 h-1.5 rounded-none bg-amber-600 shrink-0 mt-1.5" />
                 <span>{w}</span>
@@ -320,7 +321,7 @@ export const ReportPage: React.FC<ReportPageProps> = ({
           Traceable Recommendations & Suggested Focus
         </h4>
         <div className="space-y-2 text-xs text-slate-700 leading-relaxed">
-          {assessment.feedback.map((f, i) => (
+          {assessment.feedback.map((f: any, i: number) => (
             <p key={i} className="p-3 rounded-none bg-white border border-slate-200">
               {f}
             </p>

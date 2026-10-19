@@ -12,7 +12,10 @@ import {
   Play,
   RotateCcw,
   ShieldCheck,
-  Radio
+  Radio,
+  Code,
+  Users,
+  MessageSquare
 } from 'lucide-react';
 import { InterviewTrack, SessionHistoryItem, User } from '../types';
 
@@ -25,6 +28,7 @@ interface DashboardPageProps {
   onViewReportById: (sessionId: string) => void;
   currentUser: User | null;
   onOpenAuthModal: () => void;
+  onQuickStartScenario?: (scenarioId: string, trackId: string) => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -36,261 +40,232 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onViewReportById,
   currentUser,
   onOpenAuthModal,
+  onQuickStartScenario
 }) => {
+  const scenarioCards = [
+    {
+      id: 'S1',
+      title: 'S1: Failing Service (Code Fix)',
+      type: 'Technical',
+      trackId: 'bug_fixing',
+      desc: 'Investigate payment reconciliation accumulator duplication under network timeout retry storm. Fix Python worker and verify sandboxed tests.',
+      icon: Bug,
+      badge: 'Interactive Sandbox'
+    },
+    {
+      id: 'S2',
+      title: 'S2: Pull Request Review',
+      type: 'Technical',
+      trackId: 'bug_fixing',
+      desc: 'Review seeded PR with planted SQL injection and resource leaks. Leave inline feedback and decide approve or request changes.',
+      icon: Code,
+      badge: 'Defect Recall'
+    },
+    {
+      id: 'S3',
+      title: 'S3: Incident with Teammates',
+      type: 'Technical',
+      trackId: 'bug_fixing',
+      desc: 'Triage live production outage in real-time chat with simulated On-call lead (Alex), Product Manager (Sarah), and Junior engineer (Leo).',
+      icon: Users,
+      badge: 'Multi-Agent Sim'
+    },
+    {
+      id: 'N1',
+      title: 'N1: Angry Customer (Late Refund)',
+      type: 'Non-Technical',
+      trackId: 'sales',
+      desc: 'Consultative de-escalation with Marcus Vance. Emotional patience meter tracking with hidden fact: wants personal apology more than money.',
+      icon: MessageSquare,
+      badge: 'Patience Meter'
+    },
+    {
+      id: 'N2',
+      title: 'N2: Hesitant Parent (Screen Time)',
+      type: 'Non-Technical',
+      trackId: 'sales',
+      desc: 'Elena Rostova fears her 8-year-old son has excessive screen time. Address real objection with open-ended discovery instead of discounts.',
+      icon: Users,
+      badge: 'Discovery Probing'
+    },
+    {
+      id: 'N3',
+      title: 'N3: Difficult Colleague (Handoff)',
+      type: 'Non-Technical',
+      trackId: 'sales',
+      desc: 'Jordan Chen is defensive about a missed sprint deadline. Discover uncommunicated timeline changes collaboratively without blame.',
+      icon: Briefcase,
+      badge: 'De-escalation'
+    }
+  ];
+
   return (
-    <div className="space-y-8 py-6 max-w-6xl mx-auto px-4">
-      {/* Header Banner */}
-      <div className="bg-slate-900 border border-slate-700 p-6 sm:p-8 shadow-md">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 bg-cyan-950 text-cyan-400 border border-cyan-800">
-                AI Interview Practice & Coaching
+    <div className="space-y-8 py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 font-sans">
+      {/* Hero Banner (White Mode UI) */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 shadow-xs relative overflow-hidden">
+        <div className="max-w-3xl">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+              PRISM Assessment Platform
+            </span>
+            <span className="text-xs text-slate-500">Live Voice • Scenario Simulations • Separate Modalities</span>
+          </div>
+
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
+            Explainable Multimodal Interview Assessments
+          </h1>
+
+          <p className="text-sm text-slate-600 mt-3 leading-relaxed">
+            Practice live voice interviews scored by separate, calibrated models for text reasoning, acoustic voice delivery,
+            and descriptive framing. Run realistic incident scenarios with simulated teammates or stakeholder roleplay.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3 mt-6">
+            <button
+              onClick={() => onOpenSetupModal(selectedTrackId)}
+              className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-all flex items-center gap-2"
+            >
+              <Radio className="w-4 h-4 animate-pulse text-rose-300" />
+              <span>Launch Practice Interview</span>
+            </button>
+
+            {currentUser && (
+              <span className="text-xs text-slate-500 pl-2">
+                Candidate: <strong className="text-slate-900">{currentUser.display_name}</strong>
               </span>
-              <span className="text-xs text-slate-400">PRD 1.0 Multimodal Platform</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Master Your Spoken Interview Performance
-            </h1>
-          </div>
-
-          <button
-            onClick={() => onOpenSetupModal(selectedTrackId)}
-            className="px-5 py-3 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-2 shadow-lg self-start sm:self-auto shrink-0"
-          >
-            <Radio className="w-4 h-4 animate-pulse" />
-            <span>Start Practice Interview</span>
-          </button>
-        </div>
-
-        <p className="text-xs sm:text-sm text-slate-300 max-w-3xl leading-relaxed">
-          Simulate realistic job interviews with an AI interviewer. Speak your responses naturally, experience adaptive follow-up questions, and receive structured evidence-based evaluations that separate answer content from speech delivery.
-        </p>
-
-        {currentUser && (
-          <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-            <span>Welcome back, <strong className="text-white">{currentUser.display_name}</strong></span>
-            <button
-              onClick={onOpenAuthModal}
-              className="text-cyan-400 hover:text-cyan-300 transition-colors"
-            >
-              Account Preferences →
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Official PRD Interview Tracks */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-700">
-          <div>
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider">
-              Select Practice Track
-            </h2>
-            <p className="text-xs text-slate-400">
-              Two focused interview tracks defined in PRD Section 4
-            </p>
-          </div>
-          <span className="text-xs font-mono text-cyan-400 hidden sm:block">
-            Multi-stage conversational evaluations
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Sales Track Card */}
-          <div
-            onClick={() => onSelectTrack('sales')}
-            className={`p-6 border cursor-pointer transition-all flex flex-col justify-between ${
-              selectedTrackId === 'sales'
-                ? 'bg-slate-850 border-cyan-500 ring-1 ring-cyan-500/50 shadow-md'
-                : 'bg-slate-900 border-slate-750 hover:border-slate-600'
-            }`}
-          >
-            <div>
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-cyan-950/80 border border-cyan-700 flex items-center justify-center text-cyan-400">
-                    <Briefcase className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-white">Sales Interview Track</h3>
-                    <span className="text-[11px] text-slate-400 font-mono">
-                      Non-Technical Consultative Sales
-                    </span>
-                  </div>
-                </div>
-
-                {selectedTrackId === 'sales' ? (
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-cyan-950 text-cyan-400 border border-cyan-800">
-                    Selected
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-500 uppercase tracking-wider">Select</span>
-                )}
-              </div>
-
-              <p className="text-xs text-slate-300 leading-relaxed mb-4">
-                Simulates real-world prospect discovery and objection handling. Evaluates customer discovery questions, value proposition, handling price resistance, and closing strategy.
-              </p>
-
-              {/* Stages List */}
-              <div className="mb-4 space-y-1.5 bg-slate-900/60 p-3 border border-slate-800">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                  5 Conversational Stages:
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px] text-slate-300">
-                  <span>1. Customer Discovery</span>
-                  <span>2. Understanding Needs</span>
-                  <span>3. Value Proposition</span>
-                  <span>4. Objection Handling</span>
-                  <span>5. Closing & Next Steps</span>
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenSetupModal('sales');
-              }}
-              className="w-full py-2 bg-slate-800 hover:bg-cyan-600 hover:text-white border border-slate-700 text-slate-200 text-xs font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-            >
-              <span>Setup Sales Interview</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Software Engineering Bug-Fixing Track Card */}
-          <div
-            onClick={() => onSelectTrack('bug_fixing')}
-            className={`p-6 border cursor-pointer transition-all flex flex-col justify-between ${
-              selectedTrackId === 'bug_fixing'
-                ? 'bg-slate-850 border-cyan-500 ring-1 ring-cyan-500/50 shadow-md'
-                : 'bg-slate-900 border-slate-750 hover:border-slate-600'
-            }`}
-          >
-            <div>
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-emerald-950/80 border border-emerald-700 flex items-center justify-center text-emerald-400">
-                    <Bug className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-white">Bug-Fixing Interview Track</h3>
-                    <span className="text-[11px] text-slate-400 font-mono">
-                      Technical Software Engineering
-                    </span>
-                  </div>
-                </div>
-
-                {selectedTrackId === 'bug_fixing' ? (
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-800">
-                    Selected
-                  </span>
-                ) : (
-                  <span className="text-[10px] text-slate-500 uppercase tracking-wider">Select</span>
-                )}
-              </div>
-
-              <p className="text-xs text-slate-300 leading-relaxed mb-4">
-                Presents a software bug scenario (API duplicates, retry non-idempotency). Evaluates problem decomposition, competing hypotheses, diagnostic steps, root cause deduction, and regression testing.
-              </p>
-
-              {/* Stages List */}
-              <div className="mb-4 space-y-1.5 bg-slate-900/60 p-3 border border-slate-800">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                  6 Conversational Stages:
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px] text-slate-300">
-                  <span>1. Understand the Problem</span>
-                  <span>2. Form Hypotheses</span>
-                  <span>3. Diagnostic Steps</span>
-                  <span>4. Root Cause Reasoning</span>
-                  <span>5. Proposed Fix</span>
-                  <span>6. Regression Testing</span>
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenSetupModal('bug_fixing');
-              }}
-              className="w-full py-2 bg-slate-800 hover:bg-emerald-600 hover:text-white border border-slate-700 text-slate-200 text-xs font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-            >
-              <span>Setup Bug-Fixing Interview</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Recent Practice Sessions */}
-      <div className="bg-slate-900 border border-slate-700 p-6 shadow-md">
+      {/* Scenario Library Section (PRD Section 9) */}
+      <div>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-white">
-            Recent Practice Sessions
-          </h3>
-          <span className="text-xs text-slate-400">Last attempts</span>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">Work Scenario & Stakeholder Library (PRD Section 9)</h2>
+            <p className="text-xs text-slate-500">Beyond simple Q&A: realistic simulated work environments with code editors, tests, and persona agents.</p>
+          </div>
         </div>
 
-        {history.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-850 text-slate-400 uppercase text-[10px] font-mono border-b border-slate-750">
-                <tr>
-                  <th className="py-2.5 px-3">Date</th>
-                  <th className="py-2.5 px-3">Track</th>
-                  <th className="py-2.5 px-3">Difficulty</th>
-                  <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3">Content Score</th>
-                  <th className="py-2.5 px-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {history.slice(0, 5).map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-850/50 transition-colors">
-                    <td className="py-3 px-3 font-mono text-[11px] text-slate-400">
-                      {s.started_at ? new Date(s.started_at).toLocaleDateString() : 'Recent'}
-                    </td>
-                    <td className="py-3 px-3 font-semibold text-white">{s.track_name}</td>
-                    <td className="py-3 px-3 capitalize text-slate-300">{s.difficulty}</td>
-                    <td className="py-3 px-3">
-                      <span
-                        className={`text-[10px] font-bold uppercase px-1.5 py-0.5 ${
-                          s.status === 'completed'
-                            ? 'bg-emerald-950 text-emerald-400'
-                            : 'bg-amber-950 text-amber-400'
-                        }`}
-                      >
-                        {s.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 font-mono font-bold text-white">
-                      {s.content_score != null ? `${s.content_score}%` : '—'}
-                    </td>
-                    <td className="py-3 px-3 text-right">
-                      {s.status === 'completed' && (
-                        <button
-                          onClick={() => onViewReportById(s.id)}
-                          className="text-cyan-400 hover:text-cyan-300 font-semibold text-[11px] uppercase tracking-wider"
-                        >
-                          View Report →
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="p-8 text-center text-xs text-slate-400 italic">
-            No completed sessions recorded yet. Click "Start Practice Interview" to launch your first session.
-          </div>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {scenarioCards.map((scen) => {
+            const IconComponent = scen.icon;
+            return (
+              <div
+                key={scen.id}
+                className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs hover:border-indigo-300 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                      {scen.type}
+                    </span>
+                    <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">
+                      {scen.badge}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600">
+                      <IconComponent className="w-4 h-4" />
+                    </div>
+                    <h3 className="text-xs font-bold text-slate-900">{scen.title}</h3>
+                  </div>
+
+                  <p className="text-xs text-slate-600 leading-relaxed mb-4">{scen.desc}</p>
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (onQuickStartScenario) {
+                      onQuickStartScenario(scen.id, scen.trackId);
+                    } else {
+                      onOpenSetupModal(scen.trackId);
+                    }
+                  }}
+                  className="w-full py-2 bg-slate-50 hover:bg-indigo-50 text-indigo-700 border border-slate-200 hover:border-indigo-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <span>Start {scen.id} Simulation</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
+
+      {/* Standard Curriculum Tracks */}
+      <div>
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-slate-900">Standard Interview Tracks</h2>
+          <p className="text-xs text-slate-500">Multi-stage curriculum with automatic stage progression and adaptive probes.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {tracks.map((track) => (
+            <div
+              key={track.id}
+              className={`bg-white border rounded-2xl p-5 shadow-xs transition-all ${
+                selectedTrackId === track.id ? 'border-indigo-600 ring-2 ring-indigo-50' : 'border-slate-200'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-bold text-slate-900 text-sm">{track.name}</span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                  {track.stages?.length || 5} Stages
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 leading-relaxed mb-4">{track.description}</p>
+              <button
+                onClick={() => {
+                  onSelectTrack(track.id);
+                  onOpenSetupModal(track.id);
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs"
+              >
+                <span>Select & Configure</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Session History */}
+      {history.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+          <div className="p-5 border-b border-slate-200 flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Recent Practice History</h2>
+            <span className="text-xs text-slate-400">{history.length} sessions</span>
+          </div>
+
+          <div className="divide-y divide-slate-100">
+            {history.slice(0, 5).map((item) => (
+              <div key={item.id} className="p-4 flex items-center justify-between text-xs hover:bg-slate-50/60 transition-colors">
+                <div>
+                  <span className="font-bold text-slate-900 block">{item.track_name}</span>
+                  <span className="text-[11px] text-slate-500 capitalize">
+                    {item.difficulty} • {item.duration_minutes}m • Status: {item.status}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  {item.content_score != null && (
+                    <span className="font-mono font-bold text-slate-800">
+                      Score: {item.content_score > 5 ? (item.content_score / 20).toFixed(1) : item.content_score} / 5.0
+                    </span>
+                  )}
+                  <button
+                    onClick={() => onViewReportById(item.id)}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold"
+                  >
+                    View Report
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

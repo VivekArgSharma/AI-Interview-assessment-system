@@ -99,90 +99,61 @@ export interface AssessResponse {
   overall_score: number | null;
   strengths: string[];
   weaknesses: string[];
-  evidence: string[];
-  feedback: string[];
-  rubric_breakdown: RubricCriterionResult[];
-  assessment_method: string;
+  recommendations: string[];
+  evaluation_time_seconds: number;
   model_name: string;
-  scoring_notes: Record<string, string>;
-  mode?: 'text' | 'audio';
-  audio_analysis?: AudioAnalysisResponse | null;
-  unimplemented_modalities: string[];
+  rubric_results: RubricCriterionResult[];
+  semantic_similarity: number | null;
+  keyword_coverage_ratio: number | null;
+  raw_assessment_text: string | null;
+  is_fallback: boolean;
+  scoring_guidance?: Record<string, any>;
 }
 
 export interface HealthResponse {
   status: string;
-  model_name: string;
-  model_loaded: boolean;
-  whisper_model?: string;
-  whisper_loaded?: boolean;
-  vad_status?: string;
-  wav2vec_status?: string;
-  device: string;
-  assessment_method: string;
-  total_assessments_session: number;
   version: string;
+  uptime_seconds?: number;
+  model_name?: string;
+  model_loaded?: boolean;
+  device?: string;
+  assessment_method?: string;
+  total_assessments_session?: number;
+  whisper_available?: boolean;
+  vad_available?: boolean;
+  models_loaded?: {
+    sentence_transformer?: boolean;
+    whisper?: boolean;
+    vad?: boolean;
+    wav2vec?: boolean;
+  };
 }
 
 export interface MetricsResponse {
-  status: string;
-  is_synthetic: boolean;
-  dataset_description: string;
-  sample_size: number;
-  metrics: {
-    overall_score: {
-      mae: number;
-      rmse: number;
-      scale: string;
-    };
-    content_quality: {
-      mae: number;
-    };
-    semantic_relevance: {
-      mae: number;
-    };
+  total_assessments: number;
+  average_content_score: number;
+  average_delivery_score: number;
+  model_latency_p50: number;
+  model_latency_p95: number;
+  accuracy_vs_human: number;
+  sample_size?: number;
+  metrics?: {
+    pearson_correlation?: number;
+    spearman_correlation?: number;
+    mean_absolute_error?: number;
+    rmse?: number;
+    [key: string]: any;
   };
-  item_breakdown?: Array<{
-    id: string;
-    role: string;
-    question: string;
-    true_overall: number;
-    pred_overall: number;
-    absolute_error: number;
-  }>;
-  limitations: string;
-  planned_modalities: string[];
+  limitations?: string[];
+  evaluation_breakdown?: any[];
+  item_breakdown?: any[];
 }
-
-export interface SessionQuestionRecord {
-  question: QuestionItem;
-  answer: string;
-  assessment: AssessResponse | null;
-  submittedAt: string | null;
-  mode: 'text' | 'audio';
-  audioBlob?: Blob | null;
-  audioUrl?: string | null;
-  audioAnalysis?: AudioAnalysisResponse | null;
-  originalTranscript?: string | null;
-  isEditedTranscript?: boolean;
-}
-
-export interface InterviewSession {
-  id: string;
-  roleId: string;
-  roleName: string;
-  startedAt: string;
-  completedAt: string | null;
-  records: SessionQuestionRecord[];
-  currentQuestionIndex: number;
-}
-
-// ==================== PRD Multi-Turn & Persistence Types ====================
 
 export interface User {
   id: string;
   email: string;
   display_name: string;
+  role: 'candidate' | 'recruiter' | 'reviewer' | 'admin';
   consent_recording: boolean;
   account_status: string;
   privacy_preferences?: Record<string, any>;
@@ -195,16 +166,7 @@ export interface AuthResponse {
   user: User;
 }
 
-export interface StageInfo {
-  stage_id: string;
-  title: string;
-  sequence: number;
-  description: string;
-  prompt_template: string;
-  expected_concepts: string[];
-}
-
-export interface TrackRubricCriterion {
+export interface RubricCriterionData {
   id: string;
   criterion_key: string;
   criterion_name: string;
@@ -212,40 +174,88 @@ export interface TrackRubricCriterion {
   scoring_guidance: string;
   weight: number;
   maximum_score: number;
+  modality_source?: string;
+}
+
+export interface StageInfo {
+  stage_id: string;
+  title: string;
+  sequence: number;
+  description: string;
+  prompt_template: string;
+  expected_concepts: string[];
+  followup_trigger?: string;
+  followup_prompt?: string;
 }
 
 export interface InterviewTrack {
   id: string;
   name: string;
+  title?: string;
   description: string;
-  track_type: string;
+  track_type: 'non_technical' | 'technical';
   is_active: boolean;
   stages: StageInfo[];
-  criteria: TrackRubricCriterion[];
+  criteria: RubricCriterionData[];
+}
+
+export type InterviewSession = InterviewSessionData;
+export type TrackRubricCriterion = RubricCriterionData;
+
+export interface SessionQuestionRecord {
+  id?: string;
+  session_id?: string;
+  stage_index?: number;
+  stage_name?: string;
+  question_text?: string;
+  question?: any;
+  assessment?: any;
+  audioAnalysis?: any;
+  mode?: string;
+  rubric_criteria?: any[];
+  user_answer?: string;
+  answer?: string;
+  isEditedTranscript?: boolean;
+  originalTranscript?: string;
+  score?: number;
+  feedback?: string;
+  timestamp?: string;
 }
 
 export interface QuestionData {
   id: string;
+  session_id: string;
   question_text: string;
-  question_type: 'initial' | 'follow_up';
+  question_type: string;
   sequence_number: number;
   interview_stage: string;
+  targeted_dimension?: string | null;
   context_notes?: string | null;
-  expected_concepts: string[];
+  expected_concepts?: string[];
+  created_at: string;
 }
 
 export interface InterviewSessionData {
   id: string;
   track_id: string;
   track_name: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  role_id?: string | null;
+  roleName?: string;
+  mode?: string;
+  scenario_id?: string | null;
+  difficulty: string;
   duration_minutes: number;
   voice_preference: string;
+  video_enabled?: boolean;
   status: 'created' | 'in_progress' | 'paused' | 'completed' | 'abandoned';
   current_stage?: string | null;
   current_stage_index: number;
+  currentQuestionIndex?: number;
+  records?: any[];
   total_stages: number;
   current_question?: QuestionData | null;
+  needs_review?: boolean;
+  review_reason?: string | null;
   started_at?: string | null;
   completed_at?: string | null;
   created_at: string;
@@ -286,8 +296,8 @@ export interface SessionReportData {
   content_score: number;
   delivery_summary: Record<string, any>;
   overall_score?: number | null;
-  strengths: string[];
-  improvement_areas: string[];
+  strengths: any[];
+  improvement_areas: any[];
   criteria_breakdown: Array<{
     criterion_id: string;
     criterion_key: string;
@@ -362,4 +372,206 @@ export interface RecommendationData {
   recommendation_text: string;
   priority: string;
   status: string;
+}
+
+// ----------------- PRISM Specific Interfaces -----------------
+
+export interface RoleData {
+  id: string;
+  title: string;
+  jd_text: string;
+  scenario_type: string;
+  duration_minutes: number;
+  video_enabled: boolean;
+  delivery_weight: number;
+  presentation_weight: number;
+  created_at: string;
+}
+
+export interface DraftRubricResult {
+  job_title: string;
+  scenario_type: string;
+  recommended_duration_minutes: number;
+  delivery_weight: number;
+  dimensions: Array<{
+    criterion_key: string;
+    criterion_name: string;
+    weight: number;
+    description: string;
+    modality_source: string;
+  }>;
+  suggested_questions: string[];
+}
+
+export interface InviteData {
+  id: string;
+  role_id: string;
+  token: string;
+  candidate_email: string | null;
+  expires_at: string;
+  invite_url: string;
+}
+
+export interface ScenarioItem {
+  id: string;
+  title: string;
+  type: string;
+  description: string;
+  starter_code?: string;
+  logs?: string;
+  diff?: string;
+  teammates?: Array<{ name: string; role: string; avatar: string; initial_msg: string }>;
+  persona_name?: string;
+  avatar?: string;
+  initial_mood?: string;
+  patience?: number;
+  hidden_fact?: string;
+  prompt?: string;
+}
+
+export interface CodeRunResult {
+  scenario_id: string;
+  status: string;
+  passed: boolean;
+  tests_run: number;
+  tests_passed: number;
+  tests_failed: number;
+  test_details: Array<{
+    test_name: string;
+    passed: boolean;
+    duration_ms: number;
+    message: string;
+  }>;
+  stdout: string;
+  execution_time_ms: number;
+  sandboxed: boolean;
+}
+
+export interface PersonaChatResult {
+  scenario_id: string;
+  persona_name: string;
+  reply: string;
+  patience: number;
+  mood: string;
+  revealed_hidden_fact: boolean;
+  hidden_fact_detail: string | null;
+  is_resolved: boolean;
+  timestamp: string;
+}
+
+export interface ContestData {
+  id: string;
+  session_id: string;
+  dimension: string;
+  timestamp_seconds: number;
+  reason: string;
+  status: string;
+  created_at: string;
+}
+
+export interface ReviewQueueItemData {
+  session_id: string;
+  candidate_name: string;
+  role_title: string;
+  scenario_type: string;
+  overall_score: number;
+  overall_ci: string;
+  needs_review: boolean;
+  review_reason: string | null;
+  is_contested: boolean;
+  contest_count: number;
+  pending_contests: Array<{
+    id: string;
+    dimension: string;
+    timestamp_seconds: number;
+    reason: string;
+    status: string;
+  }>;
+  uncertain_dimensions: string[];
+  completed_at: string | null;
+}
+
+export interface RecruiterScorecardData {
+  session_id: string;
+  role_title: string;
+  candidate_name: string;
+  overall_score: number;
+  overall_ci: string;
+  dimensions: Array<{
+    dimension: string;
+    modality: string;
+    value: number;
+    ci_low: number;
+    ci_high: number;
+    std_error: number;
+    ci_width: number;
+    is_uncertain: boolean;
+    evidence_clips: Array<{
+      t_start: number;
+      t_end: number;
+      excerpt: string;
+      reason: string;
+    }>;
+    counterfactual_deltas: {
+      marginal_voice_contribution?: number;
+      marginal_video_contribution?: number;
+      marginal_text_contribution?: number;
+      score_without_voice?: number;
+      score_without_video?: number;
+      score_without_text?: number;
+    };
+  }>;
+  counterfactual_deltas: Record<string, any>;
+  evidence_clips: Array<{
+    t_start: number;
+    t_end: number;
+    excerpt: string;
+    reason: string;
+  }>;
+  integrity_notes: string[];
+  delivery_summary: Record<string, any>;
+  video_summary: Record<string, any>;
+  needs_review: boolean;
+  review_reason: string | null;
+}
+
+export interface AgreementEvaluationData {
+  status: string;
+  sample_size: number;
+  human_vs_human_icc: number;
+  model_vs_human_icc: number;
+  icc_gap: number;
+  icc_target_met: boolean;
+  ece: number;
+  ece_target_met: boolean;
+  mae: number;
+  rmse: number;
+  r2_score: number;
+  ablation_study: Array<{
+    modality: string;
+    mae: number;
+    rmse: number;
+    icc: number;
+    ece: number;
+    notes: string;
+  }>;
+  fairness_slices: Array<{
+    subgroup: string;
+    sample_count: number;
+    mean_score: number;
+    mae: number;
+    disparity_flag: boolean;
+  }>;
+  candidate_report_usefulness_rating: number;
+  response_gap_p50_ms: number;
+  response_gap_p95_ms: number;
+}
+
+export interface AuditLogItem {
+  id: string;
+  actor: string;
+  action: string;
+  target: string;
+  details: Record<string, any>;
+  created_at: string;
 }

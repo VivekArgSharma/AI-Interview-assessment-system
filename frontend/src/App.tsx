@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Navbar } from './components/Navbar';
+import { Navbar, UserRole } from './components/Navbar';
 import { DashboardPage } from './pages/DashboardPage';
 import { LiveInterviewRoom } from './components/LiveInterviewRoom';
 import { SessionReportPage } from './pages/SessionReportPage';
 import { ProgressPage } from './pages/ProgressPage';
 import { ModelInsightsPage } from './pages/ModelInsightsPage';
+import { RecruiterPage } from './pages/RecruiterPage';
+import { ScorecardPage } from './pages/ScorecardPage';
+import { ReviewQueuePage } from './pages/ReviewQueuePage';
+import { EvaluationDashboardPage } from './pages/EvaluationDashboardPage';
+import { AdminPrivacyPage } from './pages/AdminPrivacyPage';
 import { InterviewSetupModal } from './components/InterviewSetupModal';
+import { ConsentModal } from './components/ConsentModal';
 import { AuthModal } from './components/AuthModal';
 import { ApiService } from './services/api';
 import {
@@ -19,19 +25,30 @@ import {
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<
-    'dashboard' | 'live_interview' | 'session_report' | 'progress' | 'insights'
-  >('dashboard');
+  const [activeRole, setActiveRole] = useState<UserRole>('candidate');
+  const [currentPage, setCurrentPage] = useState<string>('dashboard');
 
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [tracks, setTracks] = useState<InterviewTrack[]>([]);
-  const [selectedTrackId, setSelectedTrackId] = useState<string>('sales');
+  const [selectedTrackId, setSelectedTrackId] = useState<string>('bug_fixing');
   const [activeSession, setActiveSession] = useState<InterviewSessionData | null>(null);
   const [activeReport, setActiveReport] = useState<SessionReportData | null>(null);
   const [history, setHistory] = useState<SessionHistoryItem[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [reviewQueueCount, setReviewQueueCount] = useState<number>(1);
+  const [scorecardSessionId, setScorecardSessionId] = useState<string>('prism-demo-session-s1');
 
+  // Modals
   const [isSetupModalOpen, setIsSetupModalOpen] = useState<boolean>(false);
+  const [isConsentModalOpen, setIsConsentModalOpen] = useState<boolean>(false);
+  const [pendingSessionConfig, setPendingSessionConfig] = useState<{
+    trackId: string;
+    difficulty: 'beginner' | 'intermediate' | 'advanced';
+    durationMinutes: number;
+    voicePreference: string;
+    scenarioId?: string;
+  } | null>(null);
+
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isStartingSession, setIsStartingSession] = useState<boolean>(false);
@@ -57,7 +74,7 @@ export const App: React.FC = () => {
         setSelectedTrackId(tracksData[0].id);
       }
 
-      // Check for logged in user or demo user
+      // Check current user
       try {
         const user = await ApiService.getMe();
         setCurrentUser(user);
@@ -72,6 +89,14 @@ export const App: React.FC = () => {
       } catch {
         // Empty history
       }
+
+      // Check review queue count
+      try {
+        const queue = await ApiService.getReviewQueue();
+        setReviewQueueCount(queue.length);
+      } catch {
+        // fallback
+      }
     } catch (err: any) {
       console.error('Initialization error:', err);
       setGlobalError(
@@ -82,28 +107,71 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleStartSession = async (config: {
+  const handleRoleSelect = (role: UserRole) => {
+    setActiveRole(role);
+    if (role === 'candidate') {
+      setCurrentPage('dashboard');
+    } else if (role === 'recruiter') {
+      setCurrentPage('recruiter');
+    } else if (role === 'reviewer') {
+      setCurrentPage('reviewer');
+    } else if (role === 'admin') {
+      setCurrentPage('eval_dashboard');
+    }
+  };
+
+  const handleSetupModalSubmit = async (config: {
     trackId: string;
     difficulty: 'beginner' | 'intermediate' | 'advanced';
     durationMinutes: number;
     voicePreference: string;
   }) => {
+    setPendingSessionConfig(config);
+    setIsSetupModalOpen(false);
+    setIsConsentModalOpen(true);
+  };
+
+  const handleQuickStartScenario = (scenarioId: string, trackId: string) => {
+    setSelectedTrackId(trackId);
+    setPendingSessionConfig({
+      trackId,
+      difficulty: 'intermediate',
+      durationMinutes: 20,
+      voicePreference: 'echo',
+      scenarioId
+    });
+    setIsConsentModalOpen(true);
+  };
+
+  const handleConfirmConsent = async (consentData: {
+    audio_consent: boolean;
+    video_consent: boolean;
+    retention_ttl_hours: number;
+    extra_time_accommodations: boolean;
+  }) => {
+    setIsConsentModalOpen(false);
+    if (!pendingSessionConfig) return;
+
     setIsStartingSession(true);
     setGlobalError(null);
     try {
       // 1. Create Session
       const session = await ApiService.createSession({
-        track_id: config.trackId,
-        difficulty: config.difficulty,
-        duration_minutes: config.durationMinutes,
-        voice_preference: config.voicePreference,
+        track_id: pendingSessionConfig.trackId,
+        difficulty: pendingSessionConfig.difficulty,
+        duration_minutes: pendingSessionConfig.durationMinutes,
+        voice_preference: pendingSessionConfig.voicePreference,
       });
 
-      // 2. Start Session
-      const started = await ApiService.startSession(session.id);
+      // 2. Start Session with scenario and consent
+      const started = await ApiService.startSession(
+        session.id,
+        pendingSessionConfig.scenarioId,
+        consentData.video_consent
+      );
+
       setActiveSession(started);
       setActiveReport(null);
-      setIsSetupModalOpen(false);
       setCurrentPage('live_interview');
 
       // Refresh history
@@ -114,6 +182,7 @@ export const App: React.FC = () => {
       setGlobalError(err?.message || 'Failed to start interview session.');
     } finally {
       setIsStartingSession(false);
+      setPendingSessionConfig(null);
     }
   };
 
@@ -150,29 +219,35 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleViewScorecard = (sessionId: string) => {
+    setScorecardSessionId(sessionId);
+    setCurrentPage('scorecard');
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-black">
-      {/* Navbar */}
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-indigo-500 selection:text-white antialiased">
+      {/* Professional White Mode Navbar */}
       <Navbar
         currentPage={currentPage}
         onNavigate={(p) => setCurrentPage(p)}
         health={health}
         hasActiveSession={Boolean(activeSession && activeSession.status === 'in_progress')}
         hasActiveReport={Boolean(activeReport)}
-        currentUser={currentUser}
-        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        activeRole={activeRole}
+        onSelectRole={handleRoleSelect}
+        reviewQueueCount={reviewQueueCount}
       />
 
       {/* Global Error Banner */}
       {globalError && (
-        <div className="bg-rose-950/80 border-b border-rose-800 text-rose-200 px-4 py-2.5 text-xs flex items-center justify-between">
-          <div className="flex items-center gap-2 max-w-4xl mx-auto">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{globalError}</span>
+        <div className="bg-rose-50 border-b border-rose-200 text-rose-800 px-4 py-2.5 text-xs flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-2 max-w-7xl mx-auto">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            <span className="font-medium">{globalError}</span>
           </div>
           <button
             onClick={() => setGlobalError(null)}
-            className="text-xs uppercase font-bold text-rose-300 hover:text-white"
+            className="text-xs uppercase font-bold text-rose-700 hover:text-rose-900 px-2 py-1 rounded-sm hover:bg-rose-100 transition-colors"
           >
             Dismiss
           </button>
@@ -183,13 +258,14 @@ export const App: React.FC = () => {
       <main className="flex-1 pb-16">
         {isLoading && !activeSession ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-            <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-            <p className="text-xs font-mono uppercase tracking-wider text-slate-400">
-              Connecting to AI Assessment Engine & Speech Pipeline...
+            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+            <p className="text-xs font-mono uppercase tracking-wider text-slate-500 font-semibold">
+              Connecting to PRISM Assessment Engine & Modality Pipeline...
             </p>
           </div>
         ) : (
           <>
+            {/* Candidate Views */}
             {currentPage === 'dashboard' && (
               <DashboardPage
                 tracks={tracks}
@@ -203,6 +279,7 @@ export const App: React.FC = () => {
                 onViewReportById={handleViewReportById}
                 currentUser={currentUser}
                 onOpenAuthModal={() => setIsAuthModalOpen(true)}
+                onQuickStartScenario={handleQuickStartScenario}
               />
             )}
 
@@ -233,6 +310,34 @@ export const App: React.FC = () => {
               />
             )}
 
+            {/* Recruiter Views */}
+            {currentPage === 'recruiter' && (
+              <RecruiterPage onViewScorecard={handleViewScorecard} />
+            )}
+
+            {currentPage === 'scorecard' && (
+              <ScorecardPage
+                sessionId={scorecardSessionId}
+                onBack={() => setCurrentPage(activeRole === 'recruiter' ? 'recruiter' : 'reviewer')}
+              />
+            )}
+
+            {/* Reviewer Views */}
+            {currentPage === 'reviewer' && (
+              <ReviewQueuePage
+                onRefreshCount={(count) => setReviewQueueCount(count)}
+              />
+            )}
+
+            {/* Admin / Governance Views */}
+            {currentPage === 'eval_dashboard' && (
+              <EvaluationDashboardPage />
+            )}
+
+            {currentPage === 'admin_privacy' && (
+              <AdminPrivacyPage />
+            )}
+
             {currentPage === 'insights' && (
               <ModelInsightsPage
                 health={health}
@@ -249,8 +354,23 @@ export const App: React.FC = () => {
         onClose={() => setIsSetupModalOpen(false)}
         tracks={tracks}
         initialTrackId={selectedTrackId}
-        onStartSession={handleStartSession}
+        onStartSession={handleSetupModalSubmit}
         isLoading={isStartingSession}
+      />
+
+      {/* PRISM Privacy Pre-Flight & Consent Modal (FR23/FR24) */}
+      <ConsentModal
+        isOpen={isConsentModalOpen}
+        onClose={() => {
+          setIsConsentModalOpen(false);
+          setPendingSessionConfig(null);
+        }}
+        onConfirmConsent={handleConfirmConsent}
+        roleTitle={
+          pendingSessionConfig?.scenarioId
+            ? `Scenario: ${pendingSessionConfig.scenarioId}`
+            : tracks.find((t) => t.id === pendingSessionConfig?.trackId)?.name || 'Standard Multimodal Assessment'
+        }
       />
 
       {/* Auth Modal */}
@@ -261,16 +381,18 @@ export const App: React.FC = () => {
         onUserChange={(u) => setCurrentUser(u)}
       />
 
-      {/* Footer */}
-      <footer className="border-t border-slate-800 bg-slate-900 py-6 text-center text-xs text-slate-500">
+      {/* Professional White Mode Footer */}
+      <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-400">Multimodal AI Interview Assessment System</span>
+          <div className="flex items-center gap-2 text-slate-600 font-medium">
+            <span className="font-bold text-slate-900">PRISM</span>
             <span>•</span>
-            <span>PRD v1.0 Compliant</span>
+            <span>Multimodal Interview Assessment Platform</span>
+            <span>•</span>
+            <span className="text-indigo-600 font-semibold">PRD Compliant</span>
           </div>
           <div className="text-[11px] text-slate-500">
-            Local Whisper ASR • Sentence-BERT Rubric Vectorizer • VAD Speech Analysis
+            5-Head Deep Ensemble • Calibrated Uncertainty [ci_low, ci_high] • Privacy-by-Default (24h TTL)
           </div>
         </div>
       </footer>
