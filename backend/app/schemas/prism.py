@@ -143,3 +143,56 @@ class RecruiterScorecardResponse(BaseModel):
     video_summary: Dict[str, Any]
     needs_review: bool
     review_reason: Optional[str]
+    question_breakdown: List[Dict[str, Any]] = []
+
+# ----------------- Mock Interview Practice Studio Schemas -----------------
+
+class MockAssessRequest(BaseModel):
+    question_id: str
+    transcript: str
+    audio_metrics: Optional[Dict[str, Any]] = None
+    video_features: Optional[Dict[str, Any]] = None
+    custom_question_text: Optional[str] = None
+
+class MockAssessResponse(BaseModel):
+    question_id: str
+    question_title: str
+    track: str
+    track_label: str
+    difficulty: str
+    question_text: str
+    candidate_transcript: str
+    overall_fused_score: float
+    overall_ci: str
+    overall_ci_low: float
+    overall_ci_high: float
+    std_error: float
+    is_uncertain: bool
+    voice_metrics: Dict[str, Any]
+    video_metrics: Dict[str, Any]
+    concept_analysis: Dict[str, Any]
+    rubric_breakdown: List[Dict[str, Any]]
+    counterfactual_deltas: Dict[str, Any]
+    pinpointed_deficits: List[Dict[str, Any]]
+    actionable_drills: List[Dict[str, Any]]
+    model_exemplar: Dict[str, Any]
+    comparison: Dict[str, Any]
+
+# ----------------- Repo & Resume Grounded Studio Schemas -----------------
+
+class RepoCustomParseRequest(BaseModel):
+    repo_name: str = "custom-project"
+    primary_language: str = "python"
+    code_content: str
+    file_path: str = "main.py"
+
+class RepoGroundedAssessRequest(BaseModel):
+    question_id: str
+    candidate_answer: str
+    repo_id: Optional[str] = None
+
+class ResumeParseRequest(BaseModel):
+    resume_text: str
+    repo_id: Optional[str] = "repo_cache_engine"
+
+

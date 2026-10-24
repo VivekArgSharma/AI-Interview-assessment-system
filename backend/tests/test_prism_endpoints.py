@@ -124,3 +124,98 @@ def test_prism_evaluation_agreement_metrics():
     assert len(data["ablation_study"]) == 5
     assert "fairness_slices" in data
     assert len(data["fairness_slices"]) >= 4
+
+def test_mock_interview_studio_endpoints():
+    # 1. Fetch mock questions
+    questions_res = client.get("/api/v1/mock-interview/questions")
+    assert questions_res.status_code == 200
+    questions = questions_res.json()
+    assert len(questions) >= 4
+    q0 = questions[0]
+    assert "id" in q0 and "expected_concepts" in q0 and "model_exemplar" in q0
+
+    # 2. Evaluate answer
+    assess_res = client.post("/api/v1/mock-interview/assess", json={
+        "question_id": q0["id"],
+        "transcript": "To prevent a cache stampede when a hot key expires under high traffic, like, we can use a distributed lock or singleflight request collapsing. Basically, we also apply TTL jitter and maybe probabilistic early expiration so requests don't hit the database all at once."
+    })
+    assert assess_res.status_code == 200
+    assess_data = assess_res.json()
+    assert assess_data["overall_fused_score"] > 0
+    assert "concept_analysis" in assess_data
+    assert "pinpointed_deficits" in assess_data
+    assert "actionable_drills" in assess_data
+    assert "model_exemplar" in assess_data
+    assert "comparison" in assess_data
+    assert assess_data["comparison"]["candidate"]["speaking_rate_wpm"] > 0
+    assert assess_data["comparison"]["exemplar"]["concept_coverage_percent"] == 100.0
+
+def test_repo_grounded_studio_endpoints():
+    # 1. Fetch available pre-indexed candidate repos
+    projects_res = client.get("/api/v1/repo-grounding/projects")
+    assert projects_res.status_code == 200
+    projects = projects_res.json()
+    assert len(projects) >= 2
+    repo0 = projects[0]
+    assert "repo_id" in repo0 and "files" in repo0 and "grounded_questions" in repo0
+    assert len(repo0["files"][0]["classes"]) >= 1
+
+    # 2. Test parse-resume endpoint
+    resume_sample = """
+    Vivek Sharma - Senior Systems Engineer
+    Experience:
+    - Architected low-latency distributed caching layer with stampede protection handling 40,000 requests/sec.
+    - Implemented multi-region Raft consensus for active-active cache invalidation.
+    """
+    resume_res = client.post("/api/v1/repo-grounding/parse-resume", json={
+        "resume_text": resume_sample,
+        "repo_id": repo0["repo_id"]
+    })
+    assert resume_res.status_code == 200
+    resume_data = resume_res.json()
+    assert "claims" in resume_data
+    assert len(resume_data["claims"]) >= 2
+
+    # 3. Test assess repo grounded answer
+    q0 = repo0["grounded_questions"][0]
+    assess_res = client.post("/api/v1/repo-grounding/assess", json={
+        "question_id": q0["question_id"],
+        "candidate_answer": "I structured the cache with an in-memory asyncio.Lock and double-checked locking because acquiring an external Redis lock for every request introduces unnecessary network roundtrips. I added fifteen percent randomized TTL jitter to prevent cache stampedes.",
+        "repo_id": repo0["repo_id"]
+    })
+    assert assess_res.status_code == 200
+    assess_data = assess_res.json()
+    assert "grounding_fidelity_score" in assess_data
+    assert assess_data["grounding_fidelity_score"] > 60
+    assert "anti_cheat_analysis" in assess_data
+    assert "ai_evasion_risk" in assess_data["anti_cheat_analysis"]
+    assert "exemplar_defense" in assess_data
+    assert len(assess_data["exemplar_defense"]["speech_segments"]) >= 1
+
+    # 4. Test parse custom repo code with Tree-Sitter
+    custom_code = """
+class RateLimiter:
+    def __init__(self, capacity: int = 100):
+        self.capacity = capacity
+        self.tokens = capacity
+        self.last_refill = 0.0
+
+    def consume(self) -> bool:
+        if self.tokens > 0:
+            self.tokens -= 1
+            return True
+        return False
+"""
+    custom_res = client.post("/api/v1/repo-grounding/parse-repo", json={
+        "repo_name": "vivek/custom-rate-limiter",
+        "primary_language": "python",
+        "code_content": custom_code,
+        "file_path": "rate_limiter.py"
+    })
+    assert custom_res.status_code == 200
+    custom_data = custom_res.json()
+    assert custom_data["ast_analysis"]["symbols_count"] >= 1
+    assert custom_data["vector_indexing"]["pgvector_schema_ready"] is True
+    assert len(custom_data["generated_questions"]) >= 1
+
+

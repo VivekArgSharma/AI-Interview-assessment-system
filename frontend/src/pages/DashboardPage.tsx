@@ -29,6 +29,7 @@ interface DashboardPageProps {
   currentUser: User | null;
   onOpenAuthModal: () => void;
   onQuickStartScenario?: (scenarioId: string, trackId: string) => void;
+  onNavigateToMockStudio?: () => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -40,7 +41,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onViewReportById,
   currentUser,
   onOpenAuthModal,
-  onQuickStartScenario
+  onQuickStartScenario,
+  onNavigateToMockStudio,
 }) => {
   const scenarioCards = [
     {
@@ -126,8 +128,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-all flex items-center gap-2"
             >
               <Radio className="w-4 h-4 animate-pulse text-rose-300" />
-              <span>Launch Practice Interview</span>
+              <span>Launch Full Interview</span>
             </button>
+
+            {onNavigateToMockStudio && (
+              <button
+                onClick={onNavigateToMockStudio}
+                className="px-5 py-3 bg-white border border-indigo-200 hover:bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-xl shadow-xs transition-all flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <span>Mock Inspection Studio (AI Voice & Deficits)</span>
+              </button>
+            )}
 
             {currentUser && (
               <span className="text-xs text-slate-500 pl-2">

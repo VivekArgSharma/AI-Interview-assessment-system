@@ -533,6 +533,188 @@ export interface RecruiterScorecardData {
   video_summary: Record<string, any>;
   needs_review: boolean;
   review_reason: string | null;
+  question_breakdown?: Array<{
+    question_id: string;
+    sequence_number: number;
+    stage_name: string;
+    question_type: string;
+    question_text: string;
+    targeted_dimension: string;
+    expected_concepts: string[];
+    candidate_transcript: string;
+    answer_id?: string;
+    audio_storage_key?: string;
+    has_audio: boolean;
+    audio_duration_seconds: number;
+    fused_score: number;
+    ci_low: number;
+    ci_high: number;
+    overall_ci: string;
+    std_error: number;
+    is_uncertain: boolean;
+    text_metrics: {
+      average_score: number;
+      rubric_items: Array<{
+        criterion_name: string;
+        score: number;
+        max_score: number;
+        weight: number;
+        evidence: string;
+        rationale: string;
+        missing_elements: string;
+      }>;
+    };
+    voice_metrics: {
+      speaking_rate_wpm: number;
+      articulation_rate_wpm: number;
+      pause_count: number;
+      total_pause_duration_seconds: number;
+      average_pause_sec: number;
+      filler_count: number;
+      status: string;
+    };
+    video_metrics: {
+      framing_stability: number;
+      gaze_at_camera_ratio: number;
+      descriptive_notes: string;
+    };
+    counterfactual_deltas: {
+      marginal_voice_contribution: number;
+      marginal_video_contribution: number;
+      marginal_text_contribution: number;
+    };
+    integrity_signals: {
+      tab_blurs: number;
+      pastes: number;
+    };
+    benchmark_exemplar: string;
+  }>;
+}
+
+export interface MockQuestionData {
+  id: string;
+  title: string;
+  track: string;
+  track_label: string;
+  difficulty: string;
+  question_text: string;
+  expected_concepts: string[];
+  rubric_criteria: Array<{
+    key: string;
+    name: string;
+    weight: number;
+    description: string;
+  }>;
+  target_wpm_range: [number, number];
+  model_exemplar: {
+    title: string;
+    full_text: string;
+    speech_segments: Array<{
+      text: string;
+      pause_after_sec: number;
+      emphasis_words: string[];
+    }>;
+    calibrated_metrics: {
+      speaking_rate_wpm: number;
+      articulation_rate_wpm: number;
+      pause_count: number;
+      average_pause_sec: number;
+      filler_words_count: number;
+      concept_coverage_percent: number;
+      predicted_delivery_score: number;
+      calibrated_ci: string;
+    };
+  };
+}
+
+export interface MockAssessResult {
+  question_id: string;
+  question_title: string;
+  track: string;
+  track_label: string;
+  difficulty: string;
+  question_text: string;
+  candidate_transcript: string;
+  overall_fused_score: number;
+  overall_ci: string;
+  overall_ci_low: number;
+  overall_ci_high: number;
+  std_error: number;
+  is_uncertain: boolean;
+  voice_metrics: {
+    speaking_rate_wpm: number;
+    articulation_rate_wpm: number;
+    total_speech_duration_seconds: number;
+    pause_count: number;
+    total_pause_duration_seconds: number;
+    average_pause_sec: number;
+    total_filler_words: number;
+    filler_counts: Record<string, number>;
+  };
+  video_metrics: {
+    framing_stability: number;
+    gaze_at_camera_ratio: number;
+    head_pose_variance?: number;
+    descriptive_notes: string;
+  };
+  concept_analysis: {
+    total_expected: number;
+    concepts_covered: string[];
+    concepts_missed: string[];
+    coverage_percentage: number;
+  };
+  rubric_breakdown: Array<{
+    criterion_key: string;
+    criterion_name: string;
+    score: number;
+    maximum_score: number;
+    weight: number;
+    matched: boolean;
+    evidence: string;
+    missing_elements: string;
+  }>;
+  counterfactual_deltas: {
+    marginal_voice_contribution?: number;
+    marginal_video_contribution?: number;
+    marginal_text_contribution?: number;
+    [key: string]: any;
+  };
+  pinpointed_deficits: Array<{
+    category: string;
+    severity: string;
+    title: string;
+    detail: string;
+    recommendation: string;
+  }>;
+  actionable_drills: Array<{
+    drill_type: string;
+    title: string;
+    instruction: string;
+  }>;
+  model_exemplar: MockQuestionData['model_exemplar'];
+  comparison: {
+    candidate: {
+      overall_fused_score: number;
+      confidence_interval: string;
+      speaking_rate_wpm: number;
+      target_wpm_range: [number, number];
+      total_filler_words: number;
+      concept_coverage_percent: number;
+      pause_count: number;
+      average_pause_sec: number;
+      word_count: number;
+    };
+    exemplar: {
+      overall_fused_score: number;
+      confidence_interval: string;
+      speaking_rate_wpm: number;
+      total_filler_words: number;
+      concept_coverage_percent: number;
+      pause_count: number;
+      average_pause_sec: number;
+      word_count: number;
+    };
+  };
 }
 
 export interface AgreementEvaluationData {
@@ -575,3 +757,90 @@ export interface AuditLogItem {
   details: Record<string, any>;
   created_at: string;
 }
+
+// ----------------- Repo & Resume Grounded Studio Types -----------------
+
+export interface GroundedQuestionData {
+  question_id: string;
+  title: string;
+  category: string;
+  target_file: string;
+  line_range: string;
+  question_text: string;
+  grounded_context: string;
+  key_code_constructs: string[];
+  anti_cheat_rubric: string[];
+  exemplar_defense: {
+    full_text: string;
+    speech_segments: Array<{
+      text: string;
+      pause_after_sec: number;
+      emphasis_words: string[];
+    }>;
+  };
+}
+
+export interface ResumeClaimData {
+  claim_id: string;
+  claim_text: string;
+  verified: boolean;
+  target_file: string;
+  verified_ast_nodes?: string[];
+  unverified_reason?: string;
+  ast_correlation?: string;
+  probing_question?: string;
+}
+
+export interface GroundedRepoData {
+  repo_id: string;
+  repo_name: string;
+  primary_language: string;
+  description: string;
+  files: Array<{
+    file_path: string;
+    classes: Array<{ name: string; start_line: number; end_line: number }>;
+    functions: Array<{ name: string; start_line: number; end_line: number }>;
+    total_lines: number;
+    patterns: Array<{ category: string; construct: string; risk_areas: string[] }>;
+    code_preview: string;
+  }>;
+  resume_claims: ResumeClaimData[];
+  grounded_questions: GroundedQuestionData[];
+}
+
+export interface RepoGroundedAssessResult {
+  question_id: string;
+  question_title: string;
+  target_file: string;
+  line_range: string;
+  candidate_transcript: string;
+  grounding_fidelity_score: number;
+  anti_cheat_analysis: {
+    ai_evasion_risk: 'Low' | 'Moderate' | 'High';
+    ai_evasion_score: number;
+    diagnostic_note: string;
+    matched_repo_constructs: string[];
+    missing_repo_constructs: string[];
+  };
+  architectural_defense_score: number;
+  rubric_breakdown: Array<{
+    criterion: string;
+    score: number;
+    status: string;
+    weight: number;
+  }>;
+  pinpointed_deficits: Array<{
+    type: string;
+    construct: string;
+    location: string;
+    severity: string;
+    feedback: string;
+  }>;
+  targeted_drills: Array<{
+    title: string;
+    duration: string;
+    instructions: string;
+  }>;
+  exemplar_defense: GroundedQuestionData['exemplar_defense'];
+}
+

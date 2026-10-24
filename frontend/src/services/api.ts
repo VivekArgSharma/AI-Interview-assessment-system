@@ -17,6 +17,12 @@ import {
   ProgressOverviewData,
   CriterionTrendData,
   RecommendationData,
+  MockQuestionData,
+  MockAssessResult,
+  RecruiterScorecardData,
+  GroundedRepoData,
+  RepoGroundedAssessResult,
+  ResumeClaimData,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
@@ -581,4 +587,98 @@ export class ApiService {
     if (!res.ok) throw new Error('Failed to load audit logs');
     return res.json();
   }
+
+  // ==================== Mock Interview Practice Studio ====================
+
+  static async getMockQuestions(): Promise<MockQuestionData[]> {
+    const res = await fetch(`${API_BASE_URL}/mock-interview/questions`);
+    if (!res.ok) throw new Error('Failed to load mock interview questions');
+    return res.json();
+  }
+
+  static async assessMockAnswer(data: {
+    question_id: string;
+    transcript: string;
+    audio_metrics?: any;
+    video_features?: any;
+    custom_question_text?: string;
+  }): Promise<MockAssessResult> {
+    const res = await fetch(`${API_BASE_URL}/mock-interview/assess`, {
+      method: 'POST',
+      headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.detail || 'Failed to assess mock interview answer');
+    }
+    return res.json();
+  }
+
+  // ==================== Repo & Resume Grounded Studio ====================
+
+  static async getGroundedRepositories(): Promise<GroundedRepoData[]> {
+    const res = await fetch(`${API_BASE_URL}/repo-grounding/projects`);
+    if (!res.ok) throw new Error('Failed to load grounded repositories');
+    return res.json();
+  }
+
+  static async parseCandidateResume(resumeText: string, repoId: string = 'repo_cache_engine'): Promise<{
+    repo_id: string;
+    repo_name: string;
+    total_claims_detected: number;
+    claims: ResumeClaimData[];
+  }> {
+    const res = await fetch(`${API_BASE_URL}/repo-grounding/parse-resume`, {
+      method: 'POST',
+      headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ resume_text: resumeText, repo_id: repoId }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.detail || 'Failed to parse candidate resume');
+    }
+    return res.json();
+  }
+
+  static async parseCustomRepo(data: {
+    repo_name: string;
+    primary_language: string;
+    code_content: string;
+    file_path?: string;
+  }): Promise<any> {
+    const res = await fetch(`${API_BASE_URL}/repo-grounding/parse-repo`, {
+      method: 'POST',
+      headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        repo_name: data.repo_name,
+        primary_language: data.primary_language,
+        code_content: data.code_content,
+        file_path: data.file_path || 'main.py',
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.detail || 'Failed to parse custom repository');
+    }
+    return res.json();
+  }
+
+  static async assessRepoGroundedAnswer(data: {
+    question_id: string;
+    candidate_answer: string;
+    repo_id?: string;
+  }): Promise<RepoGroundedAssessResult> {
+    const res = await fetch(`${API_BASE_URL}/repo-grounding/assess`, {
+      method: 'POST',
+      headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.detail || 'Failed to evaluate repo grounded answer');
+    }
+    return res.json();
+  }
 }
+

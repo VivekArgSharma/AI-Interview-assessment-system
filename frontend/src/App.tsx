@@ -10,6 +10,7 @@ import { ScorecardPage } from './pages/ScorecardPage';
 import { ReviewQueuePage } from './pages/ReviewQueuePage';
 import { EvaluationDashboardPage } from './pages/EvaluationDashboardPage';
 import { AdminPrivacyPage } from './pages/AdminPrivacyPage';
+import { MockInterviewStudioPage } from './pages/MockInterviewStudioPage';
 import { InterviewSetupModal } from './components/InterviewSetupModal';
 import { ConsentModal } from './components/ConsentModal';
 import { AuthModal } from './components/AuthModal';
@@ -280,6 +281,7 @@ export const App: React.FC = () => {
                 currentUser={currentUser}
                 onOpenAuthModal={() => setIsAuthModalOpen(true)}
                 onQuickStartScenario={handleQuickStartScenario}
+                onNavigateToMockStudio={() => setCurrentPage('mock_practice')}
               />
             )}
 
@@ -308,6 +310,10 @@ export const App: React.FC = () => {
                 onStartNewPractice={() => setIsSetupModalOpen(true)}
                 onViewReportById={handleViewReportById}
               />
+            )}
+
+            {currentPage === 'mock_practice' && (
+              <MockInterviewStudioPage />
             )}
 
             {/* Recruiter Views */}

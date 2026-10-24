@@ -10,7 +10,8 @@ import {
   BarChart3,
   Lock,
   UserCheck,
-  CheckCircle2
+  CheckCircle2,
+  Sparkles
 } from 'lucide-react';
 import { HealthResponse, User } from '../types';
 
@@ -104,6 +105,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <LayoutDashboard className="w-3.5 h-3.5" />
                 <span>Practice & Tracks</span>
+              </button>
+
+              <button
+                onClick={() => onNavigate('mock_practice')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  currentPage === 'mock_practice'
+                    ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Mock Inspection Studio</span>
               </button>
 
               <button
