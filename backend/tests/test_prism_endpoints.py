@@ -218,4 +218,26 @@ class RateLimiter:
     assert custom_data["vector_indexing"]["pgvector_schema_ready"] is True
     assert len(custom_data["generated_questions"]) >= 1
 
+    # 5. Test upload-resume-pdf endpoint with in-memory PDF
+    import io
+    import pypdf
+    writer = pypdf.PdfWriter()
+    writer.add_blank_page(width=100, height=100)
+    pdf_buffer = io.BytesIO()
+    writer.write(pdf_buffer)
+    pdf_buffer.seek(0)
+
+    upload_pdf_res = client.post(
+        "/api/v1/repo-grounding/upload-resume-pdf",
+        files={"file": ("candidate_resume.pdf", pdf_buffer.getvalue(), "application/pdf")},
+        data={"code_content": "class HotCache:\n    def get(self, k): return None"}
+    )
+    assert upload_pdf_res.status_code == 200
+    pdf_data = upload_pdf_res.json()
+    assert pdf_data["status"] == "success"
+    assert "grounded_questions" in pdf_data
+    assert len(pdf_data["grounded_questions"]) >= 1
+    assert "code_ast" in pdf_data
+
+
 

@@ -2,7 +2,7 @@ import logging
 import uuid
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile, Form
 from sqlalchemy.orm import Session
 
 from ..db.database import get_db
@@ -741,6 +741,34 @@ def parse_and_cross_reference_resume(request: ResumeParseRequest):
         "total_claims_detected": len(extracted_claims),
         "claims": extracted_claims
     }
+
+
+@router.post("/repo-grounding/upload-resume-pdf")
+async def upload_candidate_resume_pdf(
+    file: Optional[UploadFile] = File(None),
+    resume_text: Optional[str] = Form(None),
+    code_content: Optional[str] = Form(None),
+    repo_name: Optional[str] = Form(None)
+):
+    """
+    Ingests candidate resume PDF or text, extracts skills & technical claims,
+    and generates grounded probing interview questions tailored directly to their resume!
+    """
+    file_bytes = None
+    filename = ""
+    if file:
+        file_bytes = await file.read()
+        filename = file.filename or "resume.pdf"
+
+    result = RepoGroundedAssessmentService.ingest_candidate_resume(
+        file_bytes=file_bytes,
+        filename=filename,
+        resume_text=resume_text,
+        code_content=code_content,
+        repo_name=repo_name
+    )
+    return result
+
 
 
 @router.post("/repo-grounding/assess")
