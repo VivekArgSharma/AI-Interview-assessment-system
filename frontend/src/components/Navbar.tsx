@@ -11,7 +11,9 @@ import {
   Lock,
   UserCheck,
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  ArrowLeftRight,
+  LogOut
 } from 'lucide-react';
 import { HealthResponse, User } from '../types';
 
@@ -26,6 +28,8 @@ interface NavbarProps {
   activeRole: UserRole;
   onSelectRole: (role: UserRole) => void;
   reviewQueueCount: number;
+  currentUser?: User | null;
+  onSwitchPortal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -37,7 +41,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeRole,
   onSelectRole,
   reviewQueueCount,
+  currentUser,
+  onSwitchPortal,
 }) => {
+
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200/90 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -62,38 +69,50 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
-        {/* Role Switcher Pill */}
-        <div className="hidden lg:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
-          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-2">Role:</span>
-          {(['candidate', 'recruiter', 'reviewer', 'admin'] as UserRole[]).map((role) => (
-            <button
-              key={role}
-              onClick={() => {
-                onSelectRole(role);
-                if (role === 'candidate') onNavigate('dashboard');
-                else if (role === 'recruiter') onNavigate('recruiter');
-                else if (role === 'reviewer') onNavigate('reviewer');
-                else if (role === 'admin') onNavigate('eval_dashboard');
-              }}
-              className={`px-2.5 py-1 rounded-lg font-medium capitalize transition-all ${
-                activeRole === role
-                  ? 'bg-white text-indigo-700 shadow-xs font-semibold'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+        {/* Active Portal Badge (Differentiated Candidate vs Recruiter) */}
+        {currentPage !== 'portal_login' ? (
+          <div className="hidden md:flex items-center gap-2">
+            <div
+              className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ${
+                activeRole === 'candidate'
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  : 'bg-indigo-50 text-indigo-800 border border-indigo-200'
               }`}
             >
-              {role}
-              {role === 'reviewer' && reviewQueueCount > 0 && (
-                <span className="ml-1 px-1.5 py-0.2 rounded-full text-[9px] bg-rose-500 text-white font-bold">
-                  {reviewQueueCount}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  activeRole === 'candidate' ? 'bg-emerald-500' : 'bg-indigo-600'
+                }`}
+              />
+              <span>
+                {activeRole === 'candidate'
+                  ? 'Candidate Portal'
+                  : activeRole === 'recruiter'
+                  ? 'Recruiter Portal'
+                  : activeRole === 'reviewer'
+                  ? 'Reviewer Portal'
+                  : 'Admin Portal'}
+              </span>
+              <span className="text-slate-400 font-normal">|</span>
+              <span className="font-semibold text-slate-700">
+                {currentUser?.display_name ||
+                  (activeRole === 'candidate' ? 'Alex Chen' : 'Sarah Jenkins')}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+              PRISM Gateway • Select Portal
+            </span>
+          </div>
+        )}
 
         {/* Navigation Links according to Active Role */}
-        <nav className="flex items-center gap-1">
-          {activeRole === 'candidate' && (
+        {currentPage !== 'portal_login' && (
+          <nav className="flex items-center gap-1">
+            {activeRole === 'candidate' && (
+
             <>
               <button
                 onClick={() => onNavigate('dashboard')}
@@ -240,14 +259,26 @@ export const Navbar: React.FC<NavbarProps> = ({
             </>
           )}
 
-          {/* System status indicator */}
-          <div className="hidden sm:flex items-center gap-2 pl-3 ml-2 border-l border-slate-200">
-            <span className="inline-flex items-center gap-1 text-[11px] text-slate-500">
+          {/* System status & Switch Portal Button */}
+          <div className="flex items-center gap-2 pl-3 ml-2 border-l border-slate-200">
+            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-500 mr-1">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               API Ready
             </span>
+
+            {onSwitchPortal && (
+              <button
+                onClick={onSwitchPortal}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all shadow-2xs"
+                title="Switch between Candidate and Recruiter portals"
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-600" />
+                <span className="hidden sm:inline">Switch Portal</span>
+              </button>
+            )}
           </div>
         </nav>
+        )}
       </div>
     </header>
   );

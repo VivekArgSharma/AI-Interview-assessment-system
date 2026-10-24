@@ -21,6 +21,7 @@ import {
   MockAssessResult,
   RecruiterScorecardData,
   GroundedRepoData,
+  GroundedQuestionData,
   RepoGroundedAssessResult,
   ResumeClaimData,
 } from '../types';
@@ -640,6 +641,30 @@ export class ApiService {
     }
     return res.json();
   }
+
+  static async uploadResumePdf(formData: FormData): Promise<{
+    status: string;
+    source_type: string;
+    filename: string;
+    detected_name: string;
+    detected_skills: string[];
+    claims: ResumeClaimData[];
+    grounded_questions: GroundedQuestionData[];
+    code_ast?: any;
+    pgvector_ready: boolean;
+  }> {
+    const res = await fetch(`${API_BASE_URL}/repo-grounding/upload-resume-pdf`, {
+      method: 'POST',
+      headers: this.getToken() ? { Authorization: `Bearer ${this.getToken()}` } : {},
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.detail || 'Failed to upload and parse resume PDF');
+    }
+    return res.json();
+  }
+
 
   static async parseCustomRepo(data: {
     repo_name: string;

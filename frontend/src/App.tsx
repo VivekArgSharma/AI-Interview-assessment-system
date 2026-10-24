@@ -11,6 +11,7 @@ import { ReviewQueuePage } from './pages/ReviewQueuePage';
 import { EvaluationDashboardPage } from './pages/EvaluationDashboardPage';
 import { AdminPrivacyPage } from './pages/AdminPrivacyPage';
 import { MockInterviewStudioPage } from './pages/MockInterviewStudioPage';
+import { PortalLoginPage } from './pages/PortalLoginPage';
 import { InterviewSetupModal } from './components/InterviewSetupModal';
 import { ConsentModal } from './components/ConsentModal';
 import { AuthModal } from './components/AuthModal';
@@ -27,7 +28,8 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [activeRole, setActiveRole] = useState<UserRole>('candidate');
-  const [currentPage, setCurrentPage] = useState<string>('dashboard');
+  const [currentPage, setCurrentPage] = useState<string>('portal_login');
+
 
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [tracks, setTracks] = useState<InterviewTrack[]>([]);
@@ -75,13 +77,28 @@ export const App: React.FC = () => {
         setSelectedTrackId(tracksData[0].id);
       }
 
-      // Check current user
+      // Check current user and route to appropriate portal
       try {
         const user = await ApiService.getMe();
         setCurrentUser(user);
+        if (user.role === 'recruiter') {
+          setActiveRole('recruiter');
+          setCurrentPage('recruiter');
+        } else if (user.role === 'reviewer') {
+          setActiveRole('reviewer');
+          setCurrentPage('reviewer');
+        } else if (user.role === 'admin') {
+          setActiveRole('admin');
+          setCurrentPage('eval_dashboard');
+        } else {
+          setActiveRole('candidate');
+          setCurrentPage('mock_practice');
+        }
       } catch {
-        // User not logged in, demo mode active
+        // User not logged in, show portal selection & dummy login gateway
+        setCurrentPage('portal_login');
       }
+
 
       // Load session history
       try {
@@ -237,7 +254,14 @@ export const App: React.FC = () => {
         activeRole={activeRole}
         onSelectRole={handleRoleSelect}
         reviewQueueCount={reviewQueueCount}
+        currentUser={currentUser}
+        onSwitchPortal={() => {
+          ApiService.logout();
+          setCurrentUser(null);
+          setCurrentPage('portal_login');
+        }}
       />
+
 
       {/* Global Error Banner */}
       {globalError && (
@@ -266,8 +290,28 @@ export const App: React.FC = () => {
           </div>
         ) : (
           <>
+            {/* Gateway Portal & Dummy Login Page */}
+            {currentPage === 'portal_login' && (
+              <PortalLoginPage
+                onLoginSuccess={(user, role) => {
+                  setCurrentUser(user);
+                  setActiveRole(role);
+                  if (role === 'candidate') {
+                    setCurrentPage('mock_practice');
+                  } else if (role === 'recruiter') {
+                    setCurrentPage('recruiter');
+                  } else if (role === 'reviewer') {
+                    setCurrentPage('reviewer');
+                  } else {
+                    setCurrentPage('eval_dashboard');
+                  }
+                }}
+              />
+            )}
+
             {/* Candidate Views */}
             {currentPage === 'dashboard' && (
+
               <DashboardPage
                 tracks={tracks}
                 selectedTrackId={selectedTrackId}

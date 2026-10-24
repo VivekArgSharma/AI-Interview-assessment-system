@@ -769,6 +769,7 @@ export interface GroundedQuestionData {
   question_text: string;
   grounded_context: string;
   key_code_constructs: string[];
+  source_claim?: string;
   anti_cheat_rubric: string[];
   exemplar_defense: {
     full_text: string;

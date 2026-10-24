@@ -1,32 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Code,
-  FileCode,
-  ShieldCheck,
-  ShieldAlert,
   FileText,
-  Play,
-  Pause,
-  RotateCcw,
-  Sparkles,
-  Volume2,
-  CheckCircle2,
-  AlertTriangle,
-  Layers,
-  ArrowRight,
-  TrendingUp,
-  Brain,
-  Sliders,
-  Clock,
-  Radio,
   Upload,
   Cpu,
-  Database,
-  Search,
-  ExternalLink,
-  ChevronRight,
+  ShieldCheck,
+  ShieldAlert,
+  CheckCircle2,
+  AlertTriangle,
+  Play,
+  Pause,
+  Radio,
   RefreshCw,
-  Terminal
+  Sparkles,
+  Code2,
+  Volume2,
+  ArrowRight,
+  FileCode,
+  Check,
+  Layers,
+  ChevronRight,
+  ExternalLink,
+  BookOpen,
+  UserCheck
 } from 'lucide-react';
 import { ApiService } from '../services/api';
 import {
@@ -37,28 +32,23 @@ import {
 } from '../types';
 
 export const RepoGroundedStudio: React.FC = () => {
-  // Repositories & Ingestion State
-  const [repositories, setRepositories] = useState<GroundedRepoData[]>([]);
-  const [selectedRepoId, setSelectedRepoId] = useState<string>('repo_cache_engine');
-  const [selectedQuestionId, setSelectedQuestionId] = useState<string>('gq_cache_structure');
-  const [isLoadingRepos, setIsLoadingRepos] = useState<boolean>(true);
+  // Ingestion Mode & State
+  const [hasIngested, setHasIngested] = useState<boolean>(false);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // Custom Repo Ingestion Modal/Drawer State
-  const [showCustomRepoInput, setShowCustomRepoInput] = useState<boolean>(false);
-  const [customRepoName, setCustomRepoName] = useState<string>('custom-backend-service');
-  const [customLanguage, setCustomLanguage] = useState<string>('python');
-  const [customCode, setCustomCode] = useState<string>(`class CacheManager:\n    def __init__(self):\n        self._store = {}\n        self._locks = {}\n\n    async def get_or_compute(self, key: str, compute_fn):\n        if key in self._store:\n            return self._store[key]\n        # Stampede lock\n        import asyncio\n        if key not in self._locks:\n            self._locks[key] = asyncio.Lock()\n        async with self._locks[key]:\n            if key in self._store:\n                return self._store[key]\n            val = await compute_fn()\n            self._store[key] = val\n            return val`);
-  const [isParsingCustom, setIsParsingCustom] = useState<boolean>(false);
+  // Ingested Candidate Data
+  const [candidateProfile, setCandidateProfile] = useState<{
+    name: string;
+    filename: string;
+    skills: string[];
+    claims: ResumeClaimData[];
+    questions: GroundedQuestionData[];
+    codeAst?: any;
+  } | null>(null);
 
-  // Resume Ingestion State
-  const [resumeText, setResumeText] = useState<string>(
-    "Vivek Sharma - Senior Systems Engineer\nExperience:\n- Architected low-latency distributed caching layer with stampede protection handling 40,000 requests/sec with 99.8% cache hit rate.\n- Implemented multi-region Raft consensus for active-active cache invalidation.\n- Designed async event consumer pipeline processing 25,000 order transactions/sec."
-  );
-  const [resumeClaims, setResumeClaims] = useState<ResumeClaimData[]>([]);
-  const [isCrossReferencingResume, setIsCrossReferencingResume] = useState<boolean>(false);
-  const [showResumeDrawer, setShowResumeDrawer] = useState<boolean>(false);
-
-  // Candidate Answer & Recording State
+  // Selected Question & Candidate Answer State
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string>('');
   const [candidateAnswer, setCandidateAnswer] = useState<string>('');
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordingSeconds, setRecordingSeconds] = useState<number>(0);
@@ -72,126 +62,141 @@ export const RepoGroundedStudio: React.FC = () => {
   const [activeSegmentIndex, setActiveSegmentIndex] = useState<number>(-1);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
 
+  // Upload Form State (for custom text or code)
+  const [uploadTab, setUploadTab] = useState<'pdf' | 'text' | 'sample'>('pdf');
+  const [rawResumeText, setRawResumeText] = useState<string>('');
+  const [accompanyingCode, setAccompanyingCode] = useState<string>('');
+  const [selectedFileName, setSelectedFileName] = useState<string>('');
+
   // Refs
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const timerRef = useRef<any>(null);
   const speechRecognitionRef = useRef<any>(null);
 
-  const selectedRepo = repositories.find((r) => r.repo_id === selectedRepoId) || repositories[0];
-  const selectedQuestion =
-    selectedRepo?.grounded_questions.find((q) => q.question_id === selectedQuestionId) ||
-    selectedRepo?.grounded_questions[0];
+  const activeQuestion =
+    candidateProfile?.questions.find((q) => q.question_id === selectedQuestionId) ||
+    candidateProfile?.questions[0];
 
   useEffect(() => {
-    loadRepositories();
     return () => {
       stopExemplarSpeech();
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
 
-  const loadRepositories = async () => {
-    setIsLoadingRepos(true);
-    try {
-      const data = await ApiService.getGroundedRepositories();
-      setRepositories(data);
-      if (data.length > 0) {
-        setSelectedRepoId(data[0].repo_id);
-        setResumeClaims(data[0].resume_claims);
-        if (data[0].grounded_questions.length > 0) {
-          setSelectedQuestionId(data[0].grounded_questions[0].question_id);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load grounded repositories:', err);
-    } finally {
-      setIsLoadingRepos(false);
-    }
+  // Handle PDF file selection & upload
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelectedFileName(file.name);
+    await processFileUpload(file);
   };
 
-  const handleSelectRepo = (repoId: string) => {
+  const processFileUpload = async (file: File) => {
+    setIsUploading(true);
+    setUploadError(null);
     stopExemplarSpeech();
-    setSelectedRepoId(repoId);
-    setAssessmentResult(null);
-    setCandidateAnswer('');
-    const repo = repositories.find((r) => r.repo_id === repoId);
-    if (repo) {
-      setResumeClaims(repo.resume_claims);
-      if (repo.grounded_questions.length > 0) {
-        setSelectedQuestionId(repo.grounded_questions[0].question_id);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (accompanyingCode.trim()) {
+        formData.append('code_content', accompanyingCode);
       }
-    }
-  };
 
-  const handleSelectQuestion = (qId: string) => {
-    stopExemplarSpeech();
-    setSelectedQuestionId(qId);
-    setAssessmentResult(null);
-    setCandidateAnswer('');
-  };
-
-  // Cross-reference candidate resume
-  const handleCrossReferenceResume = async () => {
-    setIsCrossReferencingResume(true);
-    try {
-      const res = await ApiService.parseCandidateResume(resumeText, selectedRepoId);
-      setResumeClaims(res.claims);
-    } catch (err) {
-      console.error('Failed to cross-reference resume:', err);
-    } finally {
-      setIsCrossReferencingResume(false);
-    }
-  };
-
-  // Parse custom repository code
-  const handleParseCustomRepo = async () => {
-    if (!customCode.trim()) return;
-    setIsParsingCustom(true);
-    try {
-      const res = await ApiService.parseCustomRepo({
-        repo_name: customRepoName,
-        primary_language: customLanguage,
-        code_content: customCode,
-        file_path: customLanguage === 'python' ? 'cache_manager.py' : 'cache_manager.ts',
+      const res = await ApiService.uploadResumePdf(formData);
+      setCandidateProfile({
+        name: res.detected_name || 'Candidate Profile',
+        filename: res.filename || file.name,
+        skills: res.detected_skills || [],
+        claims: res.claims || [],
+        questions: res.grounded_questions || [],
+        codeAst: res.code_ast,
       });
 
-      const newRepo: GroundedRepoData = {
-        repo_id: res.repo_id,
-        repo_name: res.repo_name,
-        primary_language: res.primary_language,
-        description: `Candidate custom ${customLanguage} repository parsed with Tree-Sitter AST & indexed into pgvector.`,
-        files: [
-          {
-            file_path: res.file_path,
-            classes: res.ast_analysis.classes,
-            functions: res.ast_analysis.functions,
-            total_lines: res.ast_analysis.total_lines,
-            patterns: res.ast_analysis.architectural_patterns,
-            code_preview: customCode,
-          },
-        ],
-        resume_claims: [
-          {
-            claim_id: 'custom_claim_1',
-            claim_text: `Architected custom ${customRepoName} with ${res.ast_analysis.classes.length} classes and ${res.ast_analysis.functions.length} functions.`,
-            verified: true,
-            target_file: res.file_path,
-            ast_correlation: 'Verified in Tree-Sitter AST',
-          },
-        ],
-        grounded_questions: res.generated_questions,
-      };
-
-      setRepositories((prev) => [newRepo, ...prev]);
-      setSelectedRepoId(newRepo.repo_id);
-      setResumeClaims(newRepo.resume_claims);
-      if (newRepo.grounded_questions.length > 0) {
-        setSelectedQuestionId(newRepo.grounded_questions[0].question_id);
+      if (res.grounded_questions.length > 0) {
+        setSelectedQuestionId(res.grounded_questions[0].question_id);
       }
-      setShowCustomRepoInput(false);
-    } catch (err) {
-      console.error('Failed to parse custom repo:', err);
+      setHasIngested(true);
+      setAssessmentResult(null);
+      setCandidateAnswer('');
+    } catch (err: any) {
+      console.error('Failed to upload resume:', err);
+      setUploadError(err.message || 'Failed to parse resume PDF. Please try again.');
     } finally {
-      setIsParsingCustom(false);
+      setIsUploading(false);
+    }
+  };
+
+  // Handle Raw Text Resume Ingestion
+  const handleTextResumeSubmit = async () => {
+    if (!rawResumeText.trim()) return;
+    setIsUploading(true);
+    setUploadError(null);
+    stopExemplarSpeech();
+
+    try {
+      const formData = new FormData();
+      formData.append('resume_text', rawResumeText);
+      if (accompanyingCode.trim()) {
+        formData.append('code_content', accompanyingCode);
+      }
+
+      const res = await ApiService.uploadResumePdf(formData);
+      setCandidateProfile({
+        name: res.detected_name || 'Candidate Profile',
+        filename: 'candidate_resume.txt',
+        skills: res.detected_skills || [],
+        claims: res.claims || [],
+        questions: res.grounded_questions || [],
+        codeAst: res.code_ast,
+      });
+
+      if (res.grounded_questions.length > 0) {
+        setSelectedQuestionId(res.grounded_questions[0].question_id);
+      }
+      setHasIngested(true);
+      setAssessmentResult(null);
+      setCandidateAnswer('');
+    } catch (err: any) {
+      console.error('Failed to parse text resume:', err);
+      setUploadError(err.message || 'Failed to parse resume text.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Load Curated Sample (for quick inspection without uploading personal PDF)
+  const handleLoadSampleProfile = async () => {
+    setIsUploading(true);
+    setUploadError(null);
+    stopExemplarSpeech();
+
+    try {
+      const repos = await ApiService.getGroundedRepositories();
+      const repo = repos[0]; // Distributed Cache Engine
+
+      const sampleQuestions: GroundedQuestionData[] = repo.grounded_questions;
+      setCandidateProfile({
+        name: 'Vivek Sharma — Senior Distributed Systems Engineer',
+        filename: 'sample_staff_resume.pdf',
+        skills: ['Python', 'Redis', 'PostgreSQL', 'Docker', 'Kubernetes', 'AsyncIO', 'Kafka'],
+        claims: repo.resume_claims,
+        questions: sampleQuestions,
+        codeAst: repo.files[0],
+      });
+
+      if (sampleQuestions.length > 0) {
+        setSelectedQuestionId(sampleQuestions[0].question_id);
+      }
+      setHasIngested(true);
+      setAssessmentResult(null);
+      setCandidateAnswer('');
+    } catch (err: any) {
+      console.error('Failed to load sample profile:', err);
+      setUploadError('Failed to load sample profile.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -246,40 +251,39 @@ export const RepoGroundedStudio: React.FC = () => {
     }
   };
 
-  // Sample demo answers
-  const handleLoadSample = (type: 'generic_ai_assistant' | 'grounded_authentic') => {
+  // Sample demo answers for testing
+  const handleLoadSampleAnswer = (type: 'generic_ai' | 'authentic_defense') => {
     stopExemplarSpeech();
-    if (type === 'generic_ai_assistant') {
+    if (type === 'generic_ai') {
       setCandidateAnswer(
-        "Generally speaking, caching is an important concept in software development to reduce latency and improve system throughput. It is best practice to implement cache expiration and avoid database overload. There are several ways to structure a cache depending on the requirements, and in conclusion, caching makes things faster."
+        "Generally speaking, caching and database transactions are very critical in software architecture to reduce latency and scale requests. It is always best practice to structure things with proper error handling and monitoring. Depending on the company requirements, there are several patterns like write-through or cache-aside, and in conclusion, caching improves system performance."
       );
     } else {
       setCandidateAnswer(
-        "In src/cache/distributed_cache.py, I structured the cache with an in-memory asyncio.Lock and double-checked locking specifically to prevent local thundering herd without paying the latency penalty of network calls to Redis on every concurrent coroutine miss. Only the first coroutine computes the fresh value while others wait, and once unlocked, the double-check condition returns the cached entry immediately. To eliminate synchronized cache cliffs, I implemented fifteen percent randomized TTL jitter in _calculate_jittered_ttl. While this protects single-instance pods, in a multi-pod Kubernetes deployment, an external Redis distributed lock would be required to coordinate across instances."
+        "In this project, I structured the cache with an in-memory singleflight lock and randomized TTL jitter to prevent database thundering herd when hot keys expire under 40,000 requests per second. Only the first coroutine acquires the lease to compute the fresh query, while other requests safely receive the cached value via stale-while-revalidate. I added fifteen percent randomized TTL jitter to prevent synchronized expiration cliffs. In our production cluster, we also use Redis SETNX distributed mutexes to coordinate across pods."
       );
     }
   };
 
-  // Assess candidate answer against ground truth AST & anti-cheat
+  // Evaluate candidate answer against AST ground truth & anti-cheat
   const handleRunEvaluation = async () => {
-    if (!candidateAnswer.trim() || !selectedQuestion) return;
+    if (!candidateAnswer.trim() || !activeQuestion) return;
     stopExemplarSpeech();
     setIsEvaluating(true);
     try {
       const res = await ApiService.assessRepoGroundedAnswer({
-        question_id: selectedQuestion.question_id,
+        question_id: activeQuestion.question_id,
         candidate_answer: candidateAnswer,
-        repo_id: selectedRepoId,
       });
       setAssessmentResult(res);
     } catch (err) {
-      console.error('Failed to evaluate grounded answer:', err);
+      console.error('Failed to evaluate answer:', err);
     } finally {
       setIsEvaluating(false);
     }
   };
 
-  // AI Exemplar Speech Synthesis
+  // AI Exemplar Voice Playback
   const stopExemplarSpeech = () => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -321,7 +325,7 @@ export const RepoGroundedStudio: React.FC = () => {
       utterance.pitch = 1.0;
 
       utterance.onend = () => {
-        const pauseMs = (seg.pause_after_sec || 0.4) * 1000;
+        const pauseMs = (seg.pause_after_sec || 0.45) * 1000;
         setTimeout(() => {
           currentIndex++;
           playSegment(currentIndex);
@@ -340,706 +344,645 @@ export const RepoGroundedStudio: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Hero Grounding Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-6 border border-indigo-800/40 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="bg-indigo-600/90 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
-                <Cpu className="w-3.5 h-3.5" />
-                <span>Tree-Sitter AST + pgvector</span>
-              </span>
-              <span className="bg-emerald-500/20 text-emerald-300 text-[11px] font-medium px-2.5 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Anti-Cheat AI Evasion Engine</span>
-              </span>
+    <div className="space-y-10 py-2">
+      {/* =========================================================================
+          SECTION 1: ONBOARDING & RESUME INGESTION (SPACED OUT & CLEAN)
+         ========================================================================= */}
+      {!hasIngested ? (
+        <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-8 sm:p-12 max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
+          <div className="text-center max-w-2xl mx-auto space-y-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs font-semibold">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Step 1 of 2: Ingestion & AST Grounding</span>
             </div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">
-              Repo & Resume Grounded Interview Studio
+            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+              Ingest Your Resume to Generate Grounded Interview Probing
             </h2>
-            <p className="text-indigo-200 text-sm mt-1 max-w-3xl leading-relaxed">
-              We ingest your GitHub repository using <strong>Tree-Sitter AST parsing</strong> and generate dense code embeddings in <strong>pgvector</strong>. The interviewer probes your actual code: <em>“Why did you structure the cache this way?”</em> Generic AI assistants fail because they don’t know your code trade-offs.
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Upload your actual Resume PDF or paste your technical background. Our system uses <strong>Tree-Sitter AST parsing</strong> and <strong>pgvector code embeddings</strong> to synthesize the exact deep architectural questions companies ask in real senior engineering interviews.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => setShowResumeDrawer(!showResumeDrawer)}
-              className="bg-white/10 hover:bg-white/15 text-white text-xs font-semibold px-3 py-2 rounded-lg border border-white/20 transition-all flex items-center gap-1.5 shadow-sm"
-            >
-              <FileText className="w-3.5 h-3.5 text-indigo-300" />
-              <span>Resume Claims ({resumeClaims.length})</span>
-            </button>
-
-            <button
-              onClick={() => setShowCustomRepoInput(!showCustomRepoInput)}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              <span>Ingest Custom Code</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Telemetry Strip */}
-        <div className="mt-4 pt-4 border-t border-indigo-900/60 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs font-mono">
-          <div>
-            <span className="text-slate-400 block text-[10px] uppercase">AST Engine</span>
-            <span className="text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
-              ✓ Tree-Sitter (Python / JS / TS)
-            </span>
-          </div>
-          <div>
-            <span className="text-slate-400 block text-[10px] uppercase">Vector Embedding</span>
-            <span className="text-indigo-300 font-semibold mt-0.5 block">
-              384-dim SBERT (Cosine Index)
-            </span>
-          </div>
-          <div>
-            <span className="text-slate-400 block text-[10px] uppercase">pgvector DDL</span>
-            <span className="text-slate-300 font-semibold mt-0.5 block">
-              HNSW (vector_cosine_ops)
-            </span>
-          </div>
-          <div>
-            <span className="text-slate-400 block text-[10px] uppercase">Anti-Cheat Mode</span>
-            <span className="text-amber-300 font-semibold mt-0.5 block">
-              Generic LLM Evasion Filter Active
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Custom Repo Ingestion Drawer / Panel */}
-      {showCustomRepoInput && (
-        <div className="bg-white rounded-xl border border-indigo-200 p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <FileCode className="w-4 h-4 text-indigo-600" />
-              <h3 className="font-bold text-slate-900 text-sm">
-                Ingest Candidate Repository with Tree-Sitter & pgvector
-              </h3>
-            </div>
-            <button
-              onClick={() => setShowCustomRepoInput(false)}
-              className="text-xs text-slate-400 hover:text-slate-600"
-            >
-              Cancel
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">
-                Repository / Project Name
-              </label>
-              <input
-                type="text"
-                value={customRepoName}
-                onChange={(e) => setCustomRepoName(e.target.value)}
-                className="w-full text-xs font-mono border border-slate-300 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                placeholder="e.g. acme-corp/distributed-cache"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">
-                Primary Language Grammars
-              </label>
-              <select
-                value={customLanguage}
-                onChange={(e) => setCustomLanguage(e.target.value)}
-                className="w-full text-xs border border-slate-300 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-              >
-                <option value="python">Python (tree-sitter-python)</option>
-                <option value="javascript">JavaScript (tree-sitter-javascript)</option>
-                <option value="typescript">TypeScript (tree-sitter-typescript)</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold text-slate-700 block mb-1">
-              Source Code Content (AST Symbol Extractor)
-            </label>
-            <textarea
-              rows={8}
-              value={customCode}
-              onChange={(e) => setCustomCode(e.target.value)}
-              className="w-full font-mono text-xs bg-slate-50 border border-slate-300 rounded-lg p-3 text-slate-800 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-              placeholder="Paste Python, TypeScript, or JavaScript code here..."
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              onClick={handleParseCustomRepo}
-              disabled={isParsingCustom}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-1.5 transition-all shadow-sm disabled:opacity-50"
-            >
-              {isParsingCustom ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Parsing AST & Indexing pgvector...</span>
-                </>
-              ) : (
-                <>
-                  <Cpu className="w-3.5 h-3.5" />
-                  <span>Parse AST & Generate Grounded Questions</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Resume Claims Drawer / Panel */}
-      {showResumeDrawer && (
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-indigo-600" />
-              <h3 className="font-bold text-slate-900 text-sm">
-                Resume Claims vs Repository AST Ground Truth
-              </h3>
-            </div>
-            <button
-              onClick={() => setShowResumeDrawer(false)}
-              className="text-xs text-slate-400 hover:text-slate-600"
-            >
-              Close
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">
-                Candidate Resume Text (Experience & Claims)
-              </label>
-              <textarea
-                rows={5}
-                value={resumeText}
-                onChange={(e) => setResumeText(e.target.value)}
-                className="w-full text-xs font-mono bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-slate-800 outline-none"
-              />
+          {/* Ingestion Method Tabs */}
+          <div className="flex justify-center">
+            <div className="inline-flex bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80">
               <button
-                onClick={handleCrossReferenceResume}
-                disabled={isCrossReferencingResume}
-                className="mt-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all"
+                onClick={() => setUploadTab('pdf')}
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  uploadTab === 'pdf'
+                    ? 'bg-white text-indigo-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
-                {isCrossReferencingResume ? (
-                  <RefreshCw className="w-3 h-3 animate-spin" />
-                ) : (
-                  <Search className="w-3 h-3" />
-                )}
-                <span>Cross-Reference Against AST</span>
+                <Upload className="w-3.5 h-3.5" />
+                <span>Upload Resume PDF</span>
+              </button>
+
+              <button
+                onClick={() => setUploadTab('text')}
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  uploadTab === 'text'
+                    ? 'bg-white text-indigo-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Paste Resume Text</span>
+              </button>
+
+              <button
+                onClick={() => setUploadTab('sample')}
+                className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  uploadTab === 'sample'
+                    ? 'bg-white text-indigo-700 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Try Staff Engineer Sample</span>
               </button>
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <span className="text-xs font-semibold text-slate-700 block">
-                Extracted Claims & AST Verification Status:
+          {uploadError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-4 rounded-xl flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{uploadError}</span>
+            </div>
+          )}
+
+          {/* Tab 1: PDF File Dropzone */}
+          {uploadTab === 'pdf' && (
+            <div className="space-y-6">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-indigo-50/20 hover:bg-indigo-50/40 rounded-2xl p-10 text-center cursor-pointer transition-all space-y-4"
+              >
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept=".pdf,.docx,.txt"
+                  className="hidden"
+                />
+                <div className="w-14 h-14 bg-indigo-600 text-white rounded-2xl mx-auto flex items-center justify-center shadow-md shadow-indigo-200">
+                  <Upload className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-slate-800">
+                    Click to browse or drag & drop your Resume PDF
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Supports PDF, DOCX, or TXT up to 10MB
+                  </p>
+                </div>
+                {selectedFileName && (
+                  <span className="inline-block bg-white border border-indigo-200 text-indigo-800 text-xs font-semibold px-3 py-1 rounded-full shadow-xs">
+                    Selected: {selectedFileName}
+                  </span>
+                )}
+              </div>
+
+              {/* Optional Accompanying Code */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <Code2 className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Optional: Accompanying Project Code or GitHub Snippet</span>
+                  </span>
+                  <span className="text-[11px] text-slate-400">Tree-Sitter AST & pgvector</span>
+                </div>
+                <textarea
+                  rows={4}
+                  value={accompanyingCode}
+                  onChange={(e) => setAccompanyingCode(e.target.value)}
+                  placeholder="Paste Python, TypeScript, or JavaScript code from your repository (e.g. your cache manager, message consumer, or rate limiter)..."
+                  className="w-full text-xs font-mono bg-white border border-slate-200 rounded-xl p-3 text-slate-800 outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
+              {isUploading && (
+                <div className="text-center py-4 text-xs font-semibold text-indigo-600 flex items-center justify-center gap-2">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Extracting resume text via pypdf & generating grounded questions...</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab 2: Raw Text Resume */}
+          {uploadTab === 'text' && (
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Paste Resume or Profile Summary (Experience, Skills, Bullet Points)
+                </label>
+                <textarea
+                  rows={8}
+                  value={rawResumeText}
+                  onChange={(e) => setRawResumeText(e.target.value)}
+                  placeholder="Paste your resume experience bullets here (e.g. 'Architected distributed caching layer with Redis handling 40,000 req/sec with 99.8% hit rate...')"
+                  className="w-full text-xs font-sans bg-slate-50 border border-slate-200 rounded-2xl p-4 text-slate-800 outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Optional Accompanying Code */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-2">
+                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Code2 className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Optional: Accompanying Source Code (for Tree-Sitter AST)</span>
+                </span>
+                <textarea
+                  rows={3}
+                  value={accompanyingCode}
+                  onChange={(e) => setAccompanyingCode(e.target.value)}
+                  placeholder="Paste Python, TypeScript, or JavaScript code..."
+                  className="w-full text-xs font-mono bg-white border border-slate-200 rounded-xl p-3 text-slate-800 outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={handleTextResumeSubmit}
+                  disabled={isUploading || !rawResumeText.trim()}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-6 py-3 rounded-xl transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isUploading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Ingesting Resume & Synthesizing Questions...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      <span>Ingest & Generate Grounded Questions</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Tab 3: Curated Sample Profile */}
+          {uploadTab === 'sample' && (
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center space-y-5">
+              <div className="max-w-md mx-auto space-y-2">
+                <div className="w-12 h-12 bg-indigo-100 text-indigo-700 rounded-2xl mx-auto flex items-center justify-center font-bold">
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <h4 className="text-base font-bold text-slate-900">
+                  Staff Engineer Resume & Distributed Cache Engine
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Instantly loads a representative resume profile with claims on Redis stampede locks, TTL jitter, and asynchronous order pipelines, paired with real Python Tree-Sitter AST code.
+                </p>
+              </div>
+
+              <button
+                onClick={handleLoadSampleProfile}
+                disabled={isUploading}
+                className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-6 py-3 rounded-xl transition-all shadow-sm inline-flex items-center gap-2 disabled:opacity-50"
+              >
+                {isUploading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Loading Sample...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Explore With Sample Profile</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* =========================================================================
+            SECTION 2: INGESTED PROFILE & ACTIVE PROBING STUDIO (SPACED OUT)
+           ========================================================================= */
+        <div className="space-y-8 animate-in fade-in duration-300">
+          {/* Candidate Ingested Header Card */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-700 flex items-center justify-center font-bold shadow-xs">
+                <UserCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-extrabold text-base text-slate-900">
+                    {candidateProfile?.name}
+                  </h3>
+                  <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                    ✓ Resume Ingested
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5 font-mono">
+                  Source: {candidateProfile?.filename} • {candidateProfile?.claims.length} claims extracted
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setHasIngested(false)}
+                className="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3.5 py-2 rounded-xl transition-all"
+              >
+                Upload Different Resume
+              </button>
+            </div>
+          </div>
+
+          {/* Detected Skills Strip */}
+          {candidateProfile?.skills && candidateProfile.skills.length > 0 && (
+            <div className="bg-slate-50/80 rounded-2xl border border-slate-200/80 p-4 flex items-center gap-3 flex-wrap">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Detected Technical Focus:
               </span>
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                {resumeClaims.map((claim) => (
-                  <div
-                    key={claim.claim_id}
-                    className={`p-2.5 rounded-lg border text-xs ${
-                      claim.verified
-                        ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
-                        : 'bg-amber-50/70 border-amber-200 text-amber-950'
+              {candidateProfile.skills.map((skill, idx) => (
+                <span
+                  key={idx}
+                  className="bg-white border border-slate-200 text-slate-700 text-xs font-medium px-2.5 py-1 rounded-lg shadow-2xs font-mono"
+                >
+                  {skill}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Main 2-Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Left Column (5 Cols): Generated Probing Questions from Resume */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Targeted Interview Questions ({candidateProfile?.questions.length})
+                </span>
+                <span className="text-[11px] font-mono text-indigo-600 font-semibold">
+                  Tree-Sitter Grounded
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {candidateProfile?.questions.map((q) => (
+                  <button
+                    key={q.question_id}
+                    onClick={() => {
+                      stopExemplarSpeech();
+                      setSelectedQuestionId(q.question_id);
+                      setAssessmentResult(null);
+                      setCandidateAnswer('');
+                    }}
+                    className={`w-full text-left p-4 rounded-2xl border transition-all ${
+                      selectedQuestionId === q.question_id
+                        ? 'border-indigo-600 bg-indigo-50/50 shadow-xs ring-1 ring-indigo-500/20'
+                        : 'border-slate-200/90 hover:border-slate-300 bg-white'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-semibold text-[11px] flex items-center gap-1">
-                        {claim.verified ? (
+                    <div className="flex items-center justify-between text-[11px] font-mono mb-1.5">
+                      <span className="font-bold text-indigo-700">{q.category}</span>
+                      <span className="text-slate-400 text-[10px]">{q.line_range}</span>
+                    </div>
+                    <h4 className="font-bold text-xs text-slate-900 leading-snug">{q.title}</h4>
+                    {q.source_claim && (
+                      <p className="text-[11px] text-slate-500 mt-2 line-clamp-2 italic bg-white/70 p-1.5 rounded border border-slate-100 font-sans">
+                        “{q.source_claim}”
+                      </p>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* AST Telemetry Pill */}
+              <div className="p-4 rounded-2xl bg-indigo-950 text-white text-xs space-y-2 border border-indigo-900 shadow-xs">
+                <div className="flex items-center gap-2 text-indigo-300 font-bold">
+                  <Cpu className="w-4 h-4 text-emerald-400" />
+                  <span>pgvector Code Embeddings Active</span>
+                </div>
+                <p className="text-[11px] text-indigo-200 leading-relaxed">
+                  Your questions are grounded in 384-dimensional dense vectors indexed with HNSW cosine similarity. Generic answers lacking architectural numbers or trade-offs will trigger anti-cheat evasion alerts.
+                </p>
+              </div>
+            </div>
+
+            {/* Right Column (7 Cols): The Probing Question & Candidate Defense */}
+            <div className="lg:col-span-7 space-y-6">
+              {activeQuestion ? (
+                <>
+                  {/* Active Question Box */}
+                  <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full border border-indigo-100">
+                        {activeQuestion.category}
+                      </span>
+                      <span className="text-xs font-mono text-slate-400">
+                        Anti-Cheat Verification: Enabled
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-extrabold text-slate-900 leading-snug">
+                      {activeQuestion.question_text}
+                    </h3>
+
+                    {activeQuestion.source_claim && (
+                      <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-xs text-slate-700">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                          Referenced from your resume:
+                        </span>
+                        <p className="italic font-medium">"{activeQuestion.source_claim}"</p>
+                      </div>
+                    )}
+
+                    {/* Required Constructs */}
+                    <div className="pt-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
+                        Expected Technical Primitives to Defend:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {activeQuestion.key_code_constructs.map((c, i) => (
+                          <span
+                            key={i}
+                            className="bg-slate-100 text-slate-800 text-xs font-mono font-medium px-2.5 py-1 rounded-lg border border-slate-200"
+                          >
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Candidate Answer Workspace */}
+                  <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                        Your Spoken or Written Defense
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleLoadSampleAnswer('generic_ai')}
+                          className="text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-1 rounded-lg border border-amber-200 transition-all"
+                          title="Tests anti-cheat detection on canned ChatGPT responses"
+                        >
+                          Try Generic AI Answer
+                        </button>
+                        <button
+                          onClick={() => handleLoadSampleAnswer('authentic_defense')}
+                          className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-lg border border-emerald-200 transition-all"
+                          title="Tests high-fidelity authentic engineering defense"
+                        >
+                          Try Senior Defense
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      <textarea
+                        rows={6}
+                        value={candidateAnswer}
+                        onChange={(e) => setCandidateAnswer(e.target.value)}
+                        placeholder="Speak or type your architectural defense here. Explain why you structured your caching, concurrency, or idempotency this way, and defend the trade-offs..."
+                        className="w-full text-xs font-sans p-4 border border-slate-200 rounded-2xl bg-slate-50/50 text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none leading-relaxed transition-all"
+                      />
+                      {isRecording && (
+                        <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-full animate-pulse shadow-sm">
+                          <Radio className="w-3.5 h-3.5" />
+                          <span>RECORDING: {recordingSeconds}s</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Action Bar */}
+                    <div className="flex items-center justify-between pt-1">
+                      <div>
+                        {!isRecording ? (
+                          <button
+                            onClick={handleStartRecording}
+                            className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-xs"
+                          >
+                            <Radio className="w-3.5 h-3.5 text-red-400" />
+                            <span>Record Spoken Defense</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleStopRecording}
+                            className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-xs"
+                          >
+                            <span>Stop Recording</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={handleRunEvaluation}
+                        disabled={isEvaluating || !candidateAnswer.trim()}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-6 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-sm disabled:opacity-50"
+                      >
+                        {isEvaluating ? (
                           <>
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span className="text-emerald-700">Verified in AST</span>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>Evaluating Against AST Ground Truth...</span>
                           </>
                         ) : (
                           <>
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                            <span className="text-amber-700">Probing Opportunity (Unverified)</span>
+                            <ShieldCheck className="w-4 h-4" />
+                            <span>Analyze Grounding & Anti-Cheat</span>
                           </>
                         )}
-                      </span>
-                      <span className="font-mono text-[10px] text-slate-500">
-                        {claim.target_file}
-                      </span>
+                      </button>
                     </div>
-                    <p className="text-[11px] leading-snug">{claim.claim_text}</p>
-                    {claim.unverified_reason && (
-                      <p className="text-[10px] text-amber-800 font-mono mt-1 bg-amber-100/60 p-1 rounded">
-                        Note: {claim.unverified_reason}
-                      </p>
-                    )}
                   </div>
-                ))}
-              </div>
+
+                  {/* Assessment Results Section */}
+                  {assessmentResult && (
+                    <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-xs space-y-6 animate-in fade-in duration-200">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                        <h4 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                          <ShieldCheck className="w-5 h-5 text-indigo-600" />
+                          <span>Evaluation Diagnostic & Anti-Cheat Telemetry</span>
+                        </h4>
+                        <span className="text-xs font-mono text-slate-400">
+                          Question ID: {assessmentResult.question_id}
+                        </span>
+                      </div>
+
+                      {/* Primary Diagnostic Metrics Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/60">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                            Grounding Fidelity
+                          </span>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-3xl font-extrabold text-slate-900">
+                              {assessmentResult.grounding_fidelity_score}%
+                            </span>
+                            <span
+                              className={`text-xs font-bold ${
+                                assessmentResult.grounding_fidelity_score >= 70
+                                  ? 'text-emerald-600'
+                                  : 'text-amber-600'
+                              }`}
+                            >
+                              {assessmentResult.grounding_fidelity_score >= 70 ? '✓ Grounded' : '⚠️ Superficial'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div
+                          className={`p-4 rounded-2xl border ${
+                            assessmentResult.anti_cheat_analysis.ai_evasion_risk === 'Low'
+                              ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+                              : 'bg-red-50/70 border-red-200 text-red-950'
+                          }`}
+                        >
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
+                            Anti-Cheat Evasion Risk
+                          </span>
+                          <span
+                            className={`text-2xl font-black block ${
+                              assessmentResult.anti_cheat_analysis.ai_evasion_risk === 'Low'
+                                ? 'text-emerald-700'
+                                : 'text-red-700'
+                            }`}
+                          >
+                            {assessmentResult.anti_cheat_analysis.ai_evasion_risk} Risk
+                          </span>
+                        </div>
+
+                        <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/60">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                            Trade-off Defense
+                          </span>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-3xl font-extrabold text-slate-900">
+                              {assessmentResult.architectural_defense_score}
+                            </span>
+                            <span className="text-xs text-slate-400 font-medium">/ 100</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Anti-Cheat Detailed Explanation */}
+                      <div
+                        className={`p-4 rounded-2xl border text-xs leading-relaxed ${
+                          assessmentResult.anti_cheat_analysis.ai_evasion_risk === 'Low'
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                            : 'bg-red-50 border-red-200 text-red-950'
+                        }`}
+                      >
+                        <div className="font-bold flex items-center gap-1.5 mb-1 text-sm">
+                          {assessmentResult.anti_cheat_analysis.ai_evasion_risk === 'Low' ? (
+                            <>
+                              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                              <span>Authentic Engineering Defense:</span>
+                            </>
+                          ) : (
+                            <>
+                              <ShieldAlert className="w-4 h-4 text-red-600" />
+                              <span>Generic AI Evasion Detected:</span>
+                            </>
+                          )}
+                        </div>
+                        <p>{assessmentResult.anti_cheat_analysis.diagnostic_note}</p>
+                      </div>
+
+                      {/* Missing Primitives / Deficits */}
+                      {assessmentResult.pinpointed_deficits.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-xs font-bold text-slate-900 block">
+                            Pinpointed Code Deficits ({assessmentResult.pinpointed_deficits.length}):
+                          </span>
+                          <div className="space-y-2">
+                            {assessmentResult.pinpointed_deficits.map((d, i) => (
+                              <div
+                                key={i}
+                                className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-xs flex items-start gap-2.5"
+                              >
+                                <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                                <div>
+                                  <span className="font-mono font-bold text-amber-950">
+                                    Omitted: {d.construct}
+                                  </span>
+                                  <p className="text-amber-800 mt-0.5">{d.feedback}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* AI-Voiced Exemplar Audio Player */}
+                      {assessmentResult.exemplar_defense && (
+                        <div className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-2xl p-5 space-y-4 border border-indigo-900 shadow-md">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <Volume2 className="w-4 h-4 text-indigo-400" />
+                              <span className="font-bold text-sm text-white">
+                                AI-Voiced Exemplar Defense (~140 WPM Pacing)
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setPlaybackSpeed(playbackSpeed === 1.0 ? 1.1 : 1.0)}
+                                className="text-[11px] font-mono px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-indigo-200 transition-all"
+                              >
+                                {playbackSpeed}x Speed
+                              </button>
+
+                              <button
+                                onClick={playExemplarWithPacing}
+                                className={`text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm ${
+                                  isPlayingExemplar
+                                    ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                                    : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                                }`}
+                              >
+                                {isPlayingExemplar ? (
+                                  <>
+                                    <Pause className="w-3.5 h-3.5" />
+                                    <span>Pause</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Play className="w-3.5 h-3.5" />
+                                    <span>Hear Model Defense</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Synchronous Highlight Tracking */}
+                          <div className="space-y-2 text-xs text-slate-300 leading-relaxed bg-black/40 p-4 rounded-xl border border-white/5">
+                            {assessmentResult.exemplar_defense.speech_segments.map((seg, idx) => (
+                              <span
+                                key={idx}
+                                className={`transition-all duration-200 inline-block mr-2 ${
+                                  activeSegmentIndex === idx
+                                    ? 'bg-indigo-500/50 text-white font-semibold rounded px-2 py-0.5 border border-indigo-400/60'
+                                    : 'text-slate-300'
+                                }`}
+                              >
+                                {seg.text}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="p-12 text-center text-slate-400 bg-white rounded-3xl border border-slate-200">
+                  Select a probing question from the left panel to begin.
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
-
-      {/* Main Grid: Left = Ingested Repo & Questions, Right = Interview Defense */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column (5 Cols): Ingested Code & Questions */}
-        <div className="lg:col-span-5 space-y-5">
-          {/* Repository Selector */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
-              Ingested Candidate Repositories
-            </span>
-            <div className="space-y-2">
-              {repositories.map((repo) => (
-                <button
-                  key={repo.repo_id}
-                  onClick={() => handleSelectRepo(repo.repo_id)}
-                  className={`w-full text-left p-3 rounded-lg border transition-all ${
-                    selectedRepoId === repo.repo_id
-                      ? 'border-indigo-600 bg-indigo-50/60 ring-1 ring-indigo-500/20'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
-                      <Code className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>{repo.repo_name}</span>
-                    </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-semibold uppercase">
-                      {repo.primary_language}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-600 mt-1 line-clamp-2 leading-relaxed">
-                    {repo.description}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Tree-Sitter AST Structural Inspector */}
-          {selectedRepo && (
-            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <Terminal className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Tree-Sitter AST & Symbol Inspector</span>
-                </span>
-                <span className="text-[10px] font-mono text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  AST Parsed
-                </span>
-              </div>
-
-              {selectedRepo.files.map((f, i) => (
-                <div key={i} className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-mono text-slate-600 bg-slate-50 p-2 rounded border border-slate-200">
-                    <span className="font-bold text-indigo-700">{f.file_path}</span>
-                    <span className="text-slate-400 text-[10px]">{f.total_lines} lines</span>
-                  </div>
-
-                  {/* Classes & Functions */}
-                  <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
-                    <div className="bg-slate-50/80 p-2 rounded border border-slate-100">
-                      <span className="text-[9px] uppercase tracking-wider text-slate-400 block font-sans font-bold">
-                        AST Classes
-                      </span>
-                      {f.classes.map((c, ci) => (
-                        <div key={ci} className="text-slate-800 font-semibold mt-0.5 truncate">
-                          class {c.name} (L{c.start_line})
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="bg-slate-50/80 p-2 rounded border border-slate-100">
-                      <span className="text-[9px] uppercase tracking-wider text-slate-400 block font-sans font-bold">
-                        AST Methods
-                      </span>
-                      {f.functions.map((fn, fi) => (
-                        <div key={fi} className="text-slate-800 font-semibold mt-0.5 truncate">
-                          def {fn.name}() (L{fn.start_line})
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Architectural Patterns */}
-                  <div className="space-y-1">
-                    {f.patterns.map((p, pi) => (
-                      <div
-                        key={pi}
-                        className="p-2 rounded bg-indigo-50/50 border border-indigo-100/70 text-[10px]"
-                      >
-                        <div className="font-bold text-indigo-900">{p.category}: {p.construct}</div>
-                        <div className="text-slate-500 font-mono mt-0.5">
-                          Risk check: {p.risk_areas.join(' • ')}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Grounded Questions Selector */}
-          {selectedRepo && (
-            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                Grounded Probing Questions
-              </span>
-              {selectedRepo.grounded_questions.map((q) => (
-                <button
-                  key={q.question_id}
-                  onClick={() => handleSelectQuestion(q.question_id)}
-                  className={`w-full text-left p-3 rounded-lg border transition-all ${
-                    selectedQuestionId === q.question_id
-                      ? 'border-indigo-600 bg-indigo-50/80 ring-1 ring-indigo-500/20'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 mb-1">
-                    <span className="font-semibold text-indigo-600">{q.category}</span>
-                    <span>{q.line_range}</span>
-                  </div>
-                  <h4 className="font-bold text-xs text-slate-900 leading-snug">{q.title}</h4>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Right Column (7 Cols): Grounded Interview Probing & Anti-Cheat Defense */}
-        <div className="lg:col-span-7 space-y-5">
-          {selectedQuestion ? (
-            <>
-              {/* Question Card */}
-              <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="bg-indigo-100 text-indigo-800 text-[11px] font-bold px-2.5 py-0.5 rounded-full font-mono flex items-center gap-1">
-                    <FileCode className="w-3 h-3 text-indigo-600" />
-                    <span>{selectedQuestion.target_file} ({selectedQuestion.line_range})</span>
-                  </span>
-                  <span className="text-xs font-semibold text-slate-400">
-                    Probing Depth: Advanced
-                  </span>
-                </div>
-
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 leading-snug">
-                    {selectedQuestion.question_text}
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-2 bg-slate-50 p-2.5 rounded-lg border border-slate-100 font-mono">
-                    Context: {selectedQuestion.grounded_context}
-                  </p>
-                </div>
-
-                {/* Key AST Primitives Required */}
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-                    Required AST Code Primitives (Must Be Defended):
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedQuestion.key_code_constructs.map((construct, i) => (
-                      <span
-                        key={i}
-                        className="bg-slate-100 text-slate-700 text-xs font-mono font-medium px-2 py-0.5 rounded border border-slate-200"
-                      >
-                        {construct}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Anti-Cheat Rubric Note */}
-                <div className="bg-amber-50/80 border border-amber-200/80 p-3 rounded-lg text-xs text-amber-900">
-                  <span className="font-bold flex items-center gap-1.5 text-amber-800 mb-1">
-                    <ShieldAlert className="w-3.5 h-3.5" />
-                    <span>Anti-Cheat AI Evasion Detection:</span>
-                  </span>
-                  <p className="text-[11px] leading-relaxed text-amber-950">
-                    Generic ChatGPT answers (e.g., <em>“Caching is good for performance”</em>) will be flagged as <strong>Suspicious AI Evasion</strong>. You must explicitly justify why you used {selectedQuestion.key_code_constructs[0]} in your codebase.
-                  </p>
-                </div>
-              </div>
-
-              {/* Candidate Answer Studio */}
-              <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Your Spoken or Written Defense
-                  </span>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleLoadSample('generic_ai_assistant')}
-                      className="text-[11px] font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded border border-amber-200 transition-all"
-                      title="Test detection on generic ChatGPT answers"
-                    >
-                      Load Generic AI Answer
-                    </button>
-                    <button
-                      onClick={() => handleLoadSample('grounded_authentic')}
-                      className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded border border-emerald-200 transition-all"
-                      title="Test detection on authentic senior defense"
-                    >
-                      Load Grounded Defense
-                    </button>
-                  </div>
-                </div>
-
-                <div className="relative">
-                  <textarea
-                    rows={6}
-                    value={candidateAnswer}
-                    onChange={(e) => setCandidateAnswer(e.target.value)}
-                    placeholder="Turn on your microphone or type your defense here. Justify why you structured the cache, mutex, or error retry loop in your repository..."
-                    className="w-full text-xs font-mono p-3.5 border border-slate-300 rounded-xl bg-slate-50/50 text-slate-900 focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none leading-relaxed transition-all"
-                  />
-                  {isRecording && (
-                    <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-sm">
-                      <Radio className="w-3 h-3" />
-                      <span>LIVE MIC: {recordingSeconds}s</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center gap-2">
-                    {!isRecording ? (
-                      <button
-                        onClick={handleStartRecording}
-                        className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-all shadow-sm"
-                      >
-                        <Radio className="w-3.5 h-3.5 text-red-400" />
-                        <span>Record Spoken Defense</span>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleStopRecording}
-                        className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition-all shadow-sm"
-                      >
-                        <span>Stop Recording</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={handleRunEvaluation}
-                    disabled={isEvaluating || !candidateAnswer.trim()}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-5 py-2.5 rounded-lg flex items-center gap-2 transition-all shadow-sm disabled:opacity-50"
-                  >
-                    {isEvaluating ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Analyzing Against AST Ground Truth...</span>
-                      </>
-                    ) : (
-                      <>
-                        <ShieldCheck className="w-4 h-4" />
-                        <span>Assess Grounding & Anti-Cheat</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Assessment Results Card */}
-              {assessmentResult && (
-                <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-5 animate-in fade-in duration-200">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                      <Brain className="w-4 h-4 text-indigo-600" />
-                      <span>Repo-Grounded Anti-Cheat Assessment</span>
-                    </h3>
-                    <span className="text-xs font-mono font-semibold text-slate-500">
-                      {assessmentResult.target_file} ({assessmentResult.line_range})
-                    </span>
-                  </div>
-
-                  {/* Primary Scores Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Grounding Fidelity Score */}
-                    <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                        Repo Grounding Fidelity
-                      </span>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-3xl font-extrabold text-slate-900">
-                          {assessmentResult.grounding_fidelity_score}%
-                        </span>
-                        <span
-                          className={`text-xs font-bold ${
-                            assessmentResult.grounding_fidelity_score >= 70
-                              ? 'text-emerald-600'
-                              : 'text-amber-600'
-                          }`}
-                        >
-                          {assessmentResult.grounding_fidelity_score >= 70 ? '✓ Grounded' : '⚠️ Superficial'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Anti-Cheat AI Evasion Risk */}
-                    <div
-                      className={`p-3.5 rounded-xl border ${
-                        assessmentResult.anti_cheat_analysis.ai_evasion_risk === 'Low'
-                          ? 'bg-emerald-50/70 border-emerald-200'
-                          : 'bg-red-50/70 border-red-200'
-                      }`}
-                    >
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1">
-                        Anti-Cheat AI Evasion Risk
-                      </span>
-                      <div className="flex items-baseline gap-2">
-                        <span
-                          className={`text-2xl font-black ${
-                            assessmentResult.anti_cheat_analysis.ai_evasion_risk === 'Low'
-                              ? 'text-emerald-700'
-                              : 'text-red-700'
-                          }`}
-                        >
-                          {assessmentResult.anti_cheat_analysis.ai_evasion_risk} Risk
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Architectural Defense Rating */}
-                    <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                        Architectural Defense Rating
-                      </span>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-3xl font-extrabold text-slate-900">
-                          {assessmentResult.architectural_defense_score}
-                        </span>
-                        <span className="text-xs text-slate-400 font-medium">/ 100</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Anti-Cheat Diagnostic Alert */}
-                  <div
-                    className={`p-3.5 rounded-xl border text-xs leading-relaxed ${
-                      assessmentResult.anti_cheat_analysis.ai_evasion_risk === 'Low'
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
-                        : 'bg-red-50 border-red-200 text-red-950'
-                    }`}
-                  >
-                    <div className="font-bold flex items-center gap-1.5 mb-1">
-                      {assessmentResult.anti_cheat_analysis.ai_evasion_risk === 'Low' ? (
-                        <>
-                          <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                          <span>Authentic Engineering Defense Verified:</span>
-                        </>
-                      ) : (
-                        <>
-                          <ShieldAlert className="w-4 h-4 text-red-600" />
-                          <span>Flagged: Generic AI-Assistant Response Signature:</span>
-                        </>
-                      )}
-                    </div>
-                    <p className="text-[11px]">
-                      {assessmentResult.anti_cheat_analysis.diagnostic_note}
-                    </p>
-                  </div>
-
-                  {/* Missing AST Constructs */}
-                  {assessmentResult.pinpointed_deficits.length > 0 && (
-                    <div className="space-y-2">
-                      <span className="text-[11px] font-bold text-slate-900 block">
-                        Pinpointed Code Deficits ({assessmentResult.pinpointed_deficits.length}):
-                      </span>
-                      <div className="space-y-1.5">
-                        {assessmentResult.pinpointed_deficits.map((d, i) => (
-                          <div
-                            key={i}
-                            className="bg-amber-50/70 border border-amber-200 p-2.5 rounded-lg text-xs flex items-start gap-2"
-                          >
-                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
-                            <div>
-                              <span className="font-mono font-bold text-amber-900">
-                                {d.construct}
-                              </span>
-                              <p className="text-[11px] text-amber-800 mt-0.5">{d.feedback}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* AI-Voiced Exemplar Audio Player */}
-                  {assessmentResult.exemplar_defense && (
-                    <div className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-xl p-4 space-y-3 shadow-sm border border-indigo-900/50">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Volume2 className="w-4 h-4 text-indigo-400" />
-                          <span className="font-bold text-xs text-white">
-                            AI-Voiced Grounded Exemplar Defense
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => setPlaybackSpeed(playbackSpeed === 1.0 ? 1.1 : 1.0)}
-                            className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-indigo-200 transition-all"
-                          >
-                            {playbackSpeed}x Speed
-                          </button>
-
-                          <button
-                            onClick={playExemplarWithPacing}
-                            className={`text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shadow-sm ${
-                              isPlayingExemplar
-                                ? 'bg-amber-500 hover:bg-amber-600 text-white'
-                                : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                            }`}
-                          >
-                            {isPlayingExemplar ? (
-                              <>
-                                <Pause className="w-3 h-3" />
-                                <span>Pause</span>
-                              </>
-                            ) : (
-                              <>
-                                <Play className="w-3 h-3" />
-                                <span>Hear Paced Defense (~140 WPM)</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Sentence-by-sentence tracking */}
-                      <div className="space-y-1.5 text-xs text-slate-300 leading-relaxed font-sans bg-black/30 p-3 rounded-lg border border-white/5">
-                        {assessmentResult.exemplar_defense.speech_segments.map((seg, idx) => (
-                          <span
-                            key={idx}
-                            className={`transition-all duration-200 inline-block mr-1.5 ${
-                              activeSegmentIndex === idx
-                                ? 'bg-indigo-500/40 text-white font-semibold rounded px-1.5 py-0.5 border border-indigo-400/50'
-                                : 'text-slate-300'
-                            }`}
-                          >
-                            {seg.text}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="p-8 text-center text-slate-400 bg-white rounded-xl border border-slate-200">
-              Select a repository and question to inspect.
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 };
