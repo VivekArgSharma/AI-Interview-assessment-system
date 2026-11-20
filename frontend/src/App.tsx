@@ -13,6 +13,7 @@ import { AdminPrivacyPage } from './pages/AdminPrivacyPage';
 import { MockInterviewStudioPage } from './pages/MockInterviewStudioPage';
 import { PortalLoginPage } from './pages/PortalLoginPage';
 import { ExaminerDemoShowcase } from './pages/ExaminerDemoShowcase';
+import { MyInterviewsPage } from './pages/MyInterviewsPage';
 import { InterviewSetupModal } from './components/InterviewSetupModal';
 import { ConsentModal } from './components/ConsentModal';
 import { AuthModal } from './components/AuthModal';
@@ -294,12 +295,12 @@ export const App: React.FC = () => {
             {/* Gateway Portal & Dummy Login Page */}
             {currentPage === 'portal_login' && (
               <PortalLoginPage
-                onOpenExaminerDemo={() => setCurrentPage('examiner_demo')}
+                onOpenExaminerDemo={() => setCurrentPage('my_interviews')}
                 onLoginSuccess={(user, role) => {
                   setCurrentUser(user);
                   setActiveRole(role);
                   if (role === 'candidate') {
-                    setCurrentPage('mock_practice');
+                    setCurrentPage('my_interviews');
                   } else if (role === 'recruiter') {
                     setCurrentPage('recruiter');
                   } else if (role === 'reviewer') {
@@ -328,6 +329,7 @@ export const App: React.FC = () => {
                 onOpenAuthModal={() => setIsAuthModalOpen(true)}
                 onQuickStartScenario={handleQuickStartScenario}
                 onNavigateToMockStudio={() => setCurrentPage('mock_practice')}
+                onNavigateToMyInterviews={() => setCurrentPage('my_interviews')}
               />
             )}
 
@@ -347,7 +349,14 @@ export const App: React.FC = () => {
                   setSelectedTrackId(activeReport.track_id);
                   setIsSetupModalOpen(true);
                 }}
-                onViewProgress={() => setCurrentPage('progress')}
+                onViewProgress={() => setCurrentPage('my_interviews')}
+              />
+            )}
+
+            {currentPage === 'my_interviews' && (
+              <MyInterviewsPage
+                onStartNewPractice={() => setIsSetupModalOpen(true)}
+                onViewReportById={handleViewReportById}
               />
             )}
 

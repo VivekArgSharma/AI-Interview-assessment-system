@@ -30,6 +30,7 @@ interface DashboardPageProps {
   onOpenAuthModal: () => void;
   onQuickStartScenario?: (scenarioId: string, trackId: string) => void;
   onNavigateToMockStudio?: () => void;
+  onNavigateToMyInterviews?: () => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -43,6 +44,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onOpenAuthModal,
   onQuickStartScenario,
   onNavigateToMockStudio,
+  onNavigateToMyInterviews,
 }) => {
   const scenarioCards = [
     {
@@ -131,6 +133,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               <Radio className="w-4 h-4 animate-pulse text-orange-200" />
               <span>Launch Full Interview</span>
             </button>
+
+            {onNavigateToMyInterviews && (
+              <button
+                onClick={onNavigateToMyInterviews}
+                className="px-6 py-3.5 bg-orange-50 border border-orange-200 hover:bg-orange-100 text-orange-800 text-xs font-bold uppercase tracking-wider rounded-none shadow-xs transition-all flex items-center gap-2.5"
+              >
+                <Award className="w-4 h-4 text-orange-600" />
+                <span>My Interviews & Better Answers</span>
+              </button>
+            )}
 
             {onNavigateToMockStudio && (
               <button

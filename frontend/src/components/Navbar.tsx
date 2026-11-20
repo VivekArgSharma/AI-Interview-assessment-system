@@ -14,7 +14,8 @@ import {
   Sparkles,
   ArrowLeftRight,
   LogOut,
-  GraduationCap
+  GraduationCap,
+  Award
 } from 'lucide-react';
 import { HealthResponse, User } from '../types';
 
@@ -113,15 +114,15 @@ export const Navbar: React.FC<NavbarProps> = ({
         {currentPage !== 'portal_login' && (
           <nav className="flex items-center gap-1.5">
             <button
-              onClick={() => onNavigate('examiner_demo')}
+              onClick={() => onNavigate('my_interviews')}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-none text-xs font-bold transition-all mr-2 ${
-                currentPage === 'examiner_demo'
+                currentPage === 'my_interviews'
                   ? 'bg-orange-600 text-white shadow-xs'
                   : 'bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-300'
               }`}
             >
               <GraduationCap className="w-3.5 h-3.5 text-orange-600" />
-              <span>Examiner Demo</span>
+              <span>Full Interview Demo</span>
               <span className="text-[9px] px-1.5 py-0.2 rounded-none bg-orange-200 text-orange-950 font-extrabold uppercase">
                 Viva
               </span>
@@ -139,6 +140,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <LayoutDashboard className="w-3.5 h-3.5" />
                 <span>Practice & Tracks</span>
+              </button>
+
+              <button
+                onClick={() => onNavigate('my_interviews')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-colors border ${
+                  currentPage === 'my_interviews'
+                    ? 'bg-orange-600 text-white border-orange-600 font-bold'
+                    : 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
+                }`}
+              >
+                <Award className="w-3.5 h-3.5 text-orange-600" />
+                <span>My Interviews & Better Answers</span>
               </button>
 
               <button

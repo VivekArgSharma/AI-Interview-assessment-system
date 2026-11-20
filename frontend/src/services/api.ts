@@ -589,6 +589,23 @@ export class ApiService {
     return res.json();
   }
 
+  static async generateDemoFullInterview(trackId: string = 'bug_fixing'): Promise<{
+    session_id: string;
+    report_id: string;
+    track_name: string;
+    overall_score: number;
+    message: string;
+  }> {
+    const res = await fetch(`${API_BASE_URL}/demo/generate-full-interview?track_id=${encodeURIComponent(trackId)}`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      throw new Error('Failed to generate full interview simulation');
+    }
+    return res.json();
+  }
+
   // ==================== Mock Interview Practice Studio ====================
 
   static async getMockQuestions(): Promise<MockQuestionData[]> {
