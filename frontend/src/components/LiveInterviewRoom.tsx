@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Volume2,
+  VolumeX,
   Mic,
   Square,
   RotateCcw,
@@ -33,7 +34,9 @@ import {
   PersonaChatResult
 } from '../types';
 import { ApiService } from '../services/api';
-import { convertBlobToWav } from '../utils/audio';
+import { convertBlobToWav, getStudioMicrophoneStream } from '../utils/audio';
+import { voiceEngine, DEFAULT_VOICES } from '../services/voiceEngine';
+import { AudioVisualizer } from './AudioVisualizer';
 
 interface LiveInterviewRoomProps {
   session: InterviewSessionData;
@@ -50,6 +53,8 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
 }) => {
   const [currentQuestion, setCurrentQuestion] = useState<QuestionData | null>(session.current_question || null);
   const [isSpeakingQuestion, setIsSpeakingQuestion] = useState<boolean>(false);
+  const [voicePreference, setVoicePreference] = useState<string>(session.voice_preference || 'en-US-JennyNeural');
+  const [liveMicStream, setLiveMicStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordDuration, setRecordDuration] = useState<number>(0);
   const [recordedAudioBlob, setRecordedAudioBlob] = useState<Blob | null>(null);
@@ -186,22 +191,17 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
   };
 
   const speakQuestionText = (text: string) => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-    utterance.onstart = () => setIsSpeakingQuestion(true);
-    utterance.onend = () => setIsSpeakingQuestion(false);
-    utterance.onerror = () => setIsSpeakingQuestion(false);
-    window.speechSynthesis.speak(utterance);
+    voiceEngine.speak(text, {
+      voice: voicePreference,
+      onStart: () => setIsSpeakingQuestion(true),
+      onEnd: () => setIsSpeakingQuestion(false),
+      onError: () => setIsSpeakingQuestion(false),
+    });
   };
 
   const stopSpeaking = () => {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      setIsSpeakingQuestion(false);
-    }
+    voiceEngine.stop();
+    setIsSpeakingQuestion(false);
   };
 
   // Turn-taking recording controls
@@ -212,7 +212,7 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
     setTranscript('');
     audioChunksRef.current = [];
 
-    // Web Speech API for immediate live transcription
+    // Web Speech API for immediate live transcription with word spacing
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
       try {
@@ -223,9 +223,9 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
         recognition.onresult = (event: any) => {
           let currentTranscript = '';
           for (let i = 0; i < event.results.length; i++) {
-            currentTranscript += event.results[i][0].transcript;
+            currentTranscript += event.results[i][0].transcript + ' ';
           }
-          setTranscript(currentTranscript);
+          setTranscript(currentTranscript.trim());
         };
         recognition.start();
         speechRecogRef.current = recognition;
@@ -235,7 +235,8 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await getStudioMicrophoneStream();
+      setLiveMicStream(stream);
       const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       mediaRecorderRef.current = recorder;
 
@@ -256,6 +257,7 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
           await transcribeRecordedAudio(webmBlob);
         }
         stream.getTracks().forEach((t) => t.stop());
+        setLiveMicStream(null);
       };
 
       recorder.start(250);
@@ -546,21 +548,41 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
               </p>
             </div>
 
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => currentQuestion && speakQuestionText(currentQuestion.question_text)}
-                disabled={isSpeakingQuestion}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
-              >
-                <Volume2 className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Repeat Question</span>
-              </button>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => currentQuestion && speakQuestionText(currentQuestion.question_text)}
+                  disabled={isSpeakingQuestion}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <Volume2 className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Repeat Question</span>
+                </button>
+
+                <select
+                  value={voicePreference}
+                  onChange={(e) => {
+                    setVoicePreference(e.target.value);
+                    voiceEngine.setSelectedVoice(e.target.value);
+                  }}
+                  className="bg-slate-50 border border-slate-200 text-[11px] font-medium text-slate-700 rounded-lg px-2 py-1 outline-none"
+                  title="Choose AI Interviewer Voice"
+                >
+                  {DEFAULT_VOICES.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {isSpeakingQuestion && (
                 <button
                   onClick={stopSpeaking}
-                  className="px-2.5 py-1 text-xs text-slate-500 hover:text-slate-800"
+                  className="px-2.5 py-1 text-xs text-rose-600 hover:text-rose-700 font-semibold flex items-center gap-1"
                 >
-                  Barge-in / Stop Voice
+                  <VolumeX className="w-3.5 h-3.5" />
+                  <span>Barge-in / Stop Voice</span>
                 </button>
               )}
             </div>
@@ -647,6 +669,16 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
                   </span>
                 )}
               </div>
+
+              {/* Audio Waveform Visualizer */}
+              <AudioVisualizer
+                stream={liveMicStream}
+                isActive={isRecording}
+                isAiSpeaking={isSpeakingQuestion}
+                accentColor="indigo"
+                height={44}
+                label={isRecording ? "Live Mic Waveform • Noise Suppression Active" : isSpeakingQuestion ? "AI Interviewer Speaking" : "Microphone Ready"}
+              />
 
               {/* Transcript Display Box */}
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl min-h-[140px] max-h-[220px] overflow-y-auto">

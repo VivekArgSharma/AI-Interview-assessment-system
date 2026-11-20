@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   Sparkles,
   ArrowLeftRight,
-  LogOut
+  LogOut,
+  GraduationCap
 } from 'lucide-react';
 import { HealthResponse, User } from '../types';
 
@@ -111,6 +112,21 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Navigation Links according to Active Role */}
         {currentPage !== 'portal_login' && (
           <nav className="flex items-center gap-1">
+            <button
+              onClick={() => onNavigate('examiner_demo')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all mr-1 ${
+                currentPage === 'examiner_demo'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
+              }`}
+            >
+              <GraduationCap className="w-3.5 h-3.5 text-indigo-600 group-hover:text-indigo-700" />
+              <span>Examiner Demo</span>
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-indigo-200/80 text-indigo-900 font-extrabold uppercase">
+                Viva
+              </span>
+            </button>
+
             {activeRole === 'candidate' && (
 
             <>

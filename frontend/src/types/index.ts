@@ -316,6 +316,9 @@ export interface SessionReportData {
     question_type: string;
     stage: string;
     transcript: string;
+    exemplar_answer?: string;
+    key_takeaways?: string[];
+    speech_coach_feedback?: string;
     audio_duration_seconds: number;
     has_audio?: boolean;
     assessments: Array<{
@@ -779,6 +782,7 @@ export interface GroundedQuestionData {
       emphasis_words: string[];
     }>;
   };
+  generation_source?: string;
 }
 
 export interface ResumeClaimData {
@@ -843,5 +847,40 @@ export interface RepoGroundedAssessResult {
     instructions: string;
   }>;
   exemplar_defense: GroundedQuestionData['exemplar_defense'];
+}
+
+export interface VoiceOption {
+  id: string;
+  name: string;
+  gender: string;
+  locale: string;
+  role: string;
+  description: string;
+}
+
+export interface InvigilatorDemoQuestion {
+  id: string;
+  category: string;
+  question: string;
+  suboptimal: {
+    candidate_answer: string;
+    score: number;
+    ci_band: string;
+    speaking_wpm: number;
+    filler_count: number;
+    rubric_assessment: Array<{ criterion: string; status: string; note: string }>;
+    ai_critique: string;
+    speech_coaching: string;
+  };
+  exemplar: {
+    candidate_answer: string;
+    score: number;
+    ci_band: string;
+    speaking_wpm: number;
+    filler_count: number;
+    rubric_assessment: Array<{ criterion: string; status: string; note: string }>;
+    ai_critique: string;
+    speech_coaching: string;
+  };
 }
 

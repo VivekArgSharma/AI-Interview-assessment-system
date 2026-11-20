@@ -715,31 +715,21 @@ def parse_and_cross_reference_resume(request: ResumeParseRequest):
             repo = r
             break
 
-    # Analyze lines for claims
-    extracted_claims = []
-    lines = [line.strip() for line in request.resume_text.splitlines() if len(line.strip()) > 15]
-    
-    for idx, l in enumerate(lines[:6]):
-        l_lower = l.lower()
-        if any(keyword in l_lower for keyword in ["cach", "redis", "lock", "throughput", "concurrency", "qps", "async", "pipeline", "latency", "distribut", "scale", "engine", "system"]):
-            verified = ("cach" in l_lower or "lock" in l_lower or "async" in l_lower) and ("raft" not in l_lower and "consensus" not in l_lower)
-            extracted_claims.append({
-                "claim_id": f"resume_claim_{idx+1}",
-                "claim_text": l,
-                "verified": verified,
-                "target_file": repo["files"][0]["file_path"],
-                "ast_correlation": "High AST overlap with DistributedCacheManager" if verified else "Unverified: Code uses single-process lock without external consensus",
-                "probing_question": f"In your project `{repo['repo_name']}`, how does your implementation of `{l[:40]}...` handle failure boundaries in production?"
-            })
-
-    if not extracted_claims:
-        extracted_claims = repo["resume_claims"]
+    # Ingest resume text and generate non-deterministic LLM interview questions
+    ingest_res = RepoGroundedAssessmentService.ingest_candidate_resume(
+        resume_text=request.resume_text,
+        repo_name=repo["repo_name"]
+    )
 
     return {
         "repo_id": repo["repo_id"],
         "repo_name": repo["repo_name"],
-        "total_claims_detected": len(extracted_claims),
-        "claims": extracted_claims
+        "total_claims_detected": len(ingest_res["claims"]),
+        "claims": ingest_res["claims"],
+        "grounded_questions": ingest_res["grounded_questions"],
+        "llm_provider": ingest_res.get("llm_provider", "pollinations_ai"),
+        "llm_tier": ingest_res.get("llm_tier", "primary_pollinations"),
+        "generation_time_ms": ingest_res.get("generation_time_ms", 0)
     }
 
 

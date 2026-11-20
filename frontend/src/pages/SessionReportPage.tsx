@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Award,
   Mic,
@@ -8,6 +8,7 @@ import {
   ArrowRight,
   TrendingUp,
   Volume2,
+  VolumeX,
   Quote,
   Layers,
   Sparkles,
@@ -15,10 +16,13 @@ import {
   RotateCcw,
   Clock,
   HelpCircle,
-  Flag
+  Flag,
+  Zap,
+  Check
 } from 'lucide-react';
 import { SessionReportData } from '../types';
 import { ApiService } from '../services/api';
+import { voiceEngine, DEFAULT_VOICES } from '../services/voiceEngine';
 
 interface SessionReportPageProps {
   report: SessionReportData;
@@ -31,8 +35,37 @@ export const SessionReportPage: React.FC<SessionReportPageProps> = ({
   onPracticeAgain,
   onViewProgress,
 }) => {
-  const [activeTab, setActiveTab] = useState<'improvement' | 'rubric' | 'history' | 'audio'>('improvement');
+  const [activeTab, setActiveTab] = useState<'exemplar' | 'improvement' | 'rubric' | 'history' | 'audio'>('exemplar');
+  const [selectedVoice, setSelectedVoice] = useState<string>('en-US-JennyNeural');
+  const [activeAudioKey, setActiveAudioKey] = useState<string | null>(null);
+  const [isAiSpeaking, setIsAiSpeaking] = useState<boolean>(false);
   const [isContestModalOpen, setIsContestModalOpen] = useState(false);
+
+  useEffect(() => {
+    const unsub = voiceEngine.subscribe((speaking) => {
+      setIsAiSpeaking(speaking);
+      if (!speaking) setActiveAudioKey(null);
+    });
+    return () => {
+      unsub();
+      voiceEngine.stop();
+    };
+  }, []);
+
+  const handleToggleVoice = (text: string, key: string) => {
+    if (isAiSpeaking && activeAudioKey === key) {
+      voiceEngine.stop();
+      setActiveAudioKey(null);
+      return;
+    }
+
+    setActiveAudioKey(key);
+    voiceEngine.speak(text, {
+      voice: selectedVoice,
+      onEnd: () => setActiveAudioKey(null),
+      onError: () => setActiveAudioKey(null),
+    });
+  };
   const [contestDimension, setContestDimension] = useState(
     report.criteria_breakdown?.[0]?.criterion_name || 'Problem Decomposition'
   );
@@ -140,7 +173,20 @@ export const SessionReportPage: React.FC<SessionReportPageProps> = ({
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 mb-6">
+      <div className="flex items-center gap-2 border-b border-slate-200 mb-6 flex-wrap">
+        <button
+          onClick={() => setActiveTab('exemplar')}
+          className={`pb-3 px-3 text-xs font-semibold flex items-center gap-2 border-b-2 transition-all ${
+            activeTab === 'exemplar'
+              ? 'border-indigo-600 text-indigo-700 font-bold'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+          <span>Exemplar Answers & AI Voice Coach</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700">New</span>
+        </button>
+
         <button
           onClick={() => setActiveTab('improvement')}
           className={`pb-3 px-3 text-xs font-semibold flex items-center gap-2 border-b-2 transition-all ${
@@ -149,8 +195,8 @@ export const SessionReportPage: React.FC<SessionReportPageProps> = ({
               : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Top Improvement Plan & Drills (D7)</span>
+          <Award className="w-3.5 h-3.5" />
+          <span>Top Improvement Plan & Drills</span>
         </button>
 
         <button
@@ -161,7 +207,7 @@ export const SessionReportPage: React.FC<SessionReportPageProps> = ({
               : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
-          <Award className="w-3.5 h-3.5" />
+          <Layers className="w-3.5 h-3.5" />
           <span>Rubric Breakdown</span>
         </button>
 
@@ -189,6 +235,212 @@ export const SessionReportPage: React.FC<SessionReportPageProps> = ({
           <span>Q&A Transcript History</span>
         </button>
       </div>
+
+      {/* TAB 0: Exemplar Answers & AI Voice Coach (PRD FR14 & Speech Coaching) */}
+      {activeTab === 'exemplar' && (
+        <div className="space-y-6">
+          {/* Coaching Banner & Voice Persona Selector */}
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-5 shadow-sm border border-indigo-900/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
+                  Multimodal Dual-Voice Feedback
+                </span>
+                <span className="text-xs text-slate-300">Natural Neural Prosody Active</span>
+              </div>
+              <h3 className="text-sm font-bold text-white">
+                Interactive Answer Reconstruction & Verbal Delivery Coach
+              </h3>
+              <p className="text-xs text-slate-300 max-w-xl">
+                Review your actual answer alongside the exemplar model answer. Listen to each model answer in realistic human AI voice, and hear tailored speech coach critique on how you should speak.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="text-xs text-slate-300 font-medium">Coach Voice:</span>
+              <select
+                value={selectedVoice}
+                onChange={(e) => setSelectedVoice(e.target.value)}
+                className="bg-slate-800 border border-slate-700 text-xs text-white rounded-xl px-3 py-2 outline-none focus:border-indigo-400"
+              >
+                {DEFAULT_VOICES.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Question by Question Reconstruction */}
+          {report.qa_history && report.qa_history.length > 0 ? (
+            report.qa_history.map((qa, idx) => {
+              const exemplarText = qa.exemplar_answer || 'An exemplar response leads directly with an executive summary and STAR breakdown of technical trade-offs.';
+              const coachText = qa.speech_coach_feedback || 'Maintain a steady 135 to 145 WPM cadence, pause cleanly after key metrics, and eliminate verbal fillers.';
+              const takeaways = qa.key_takeaways || [
+                'Structured STAR response progression',
+                'Explicit trade-off evaluation',
+                'Calm, measured vocal cadence (130-145 WPM)'
+              ];
+
+              return (
+                <div key={idx} className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-6">
+                  {/* Question Title */}
+                  <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <span className="text-[10px] font-mono font-bold text-indigo-600 uppercase tracking-wider block">
+                        Question #{idx + 1} &bull; Stage: {qa.stage || 'Technical Assessment'}
+                      </span>
+                      <h4 className="text-sm font-bold text-slate-900 mt-0.5">
+                        "{qa.question_text}"
+                      </h4>
+                    </div>
+                    {qa.has_audio && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 self-start sm:self-auto">
+                        Spoken Audio Recorded ({qa.audio_duration_seconds}s)
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Side-by-Side: Your Answer vs Exemplar Answer */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    {/* Your Answer */}
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                          <Mic className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Your Submitted Answer:</span>
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-500">
+                          {qa.transcript.split(/\s+/).filter(Boolean).length} words
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-800 leading-relaxed font-mono bg-white p-3.5 rounded-xl border border-slate-200">
+                        "{qa.transcript}"
+                      </p>
+
+                      {qa.assessments && qa.assessments.length > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                            Evaluated Rubric Criteria:
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {qa.assessments.map((ass, i) => (
+                              <span
+                                key={i}
+                                className={`text-[11px] px-2.5 py-0.5 rounded-lg border font-medium ${
+                                  ass.score >= 4
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                    : ass.score >= 3
+                                    ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                                    : 'bg-amber-50 text-amber-800 border-amber-200'
+                                }`}
+                              >
+                                {ass.criterion_name}: {ass.score}/5
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Exemplar Model Answer */}
+                    <div className="p-4 bg-emerald-50/50 border border-emerald-200 rounded-2xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-emerald-950 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Exemplar Model Answer (How to Answer Best):</span>
+                        </span>
+                        <button
+                          onClick={() => handleToggleVoice(exemplarText, `exemplar_${idx}`)}
+                          className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all shadow-xs ${
+                            activeAudioKey === `exemplar_${idx}`
+                              ? 'bg-rose-600 text-white animate-pulse'
+                              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                          }`}
+                        >
+                          {activeAudioKey === `exemplar_${idx}` ? (
+                            <>
+                              <VolumeX className="w-3.5 h-3.5" />
+                              <span>Stop Voice</span>
+                            </>
+                          ) : (
+                            <>
+                              <Volume2 className="w-3.5 h-3.5" />
+                              <span>🔊 Hear Model Answer</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      <p className="text-xs text-slate-800 leading-relaxed font-mono bg-white p-3.5 rounded-xl border border-emerald-200/80">
+                        "{exemplarText}"
+                      </p>
+
+                      {takeaways.length > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">
+                            Core Strategic Pillars Included:
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {takeaways.map((t: string, i: number) => (
+                              <span
+                                key={i}
+                                className="text-[11px] px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-900 border border-emerald-300 font-medium"
+                              >
+                                &bull; {t}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* AI Speech & Delivery Coach ("How You Should Speak") */}
+                  <div className="p-4 bg-slate-900 text-white rounded-2xl space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5 text-amber-400" />
+                        <span>AI Speech & Delivery Coach &bull; How You Should Speak:</span>
+                      </span>
+
+                      <button
+                        onClick={() => handleToggleVoice(coachText, `coach_${idx}`)}
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all self-start sm:self-auto ${
+                          activeAudioKey === `coach_${idx}`
+                            ? 'bg-rose-500 text-white animate-pulse'
+                            : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                        }`}
+                      >
+                        {activeAudioKey === `coach_${idx}` ? (
+                          <>
+                            <VolumeX className="w-3.5 h-3.5" />
+                            <span>Stop Coach Voice</span>
+                          </>
+                        ) : (
+                          <>
+                            <Volume2 className="w-3.5 h-3.5" />
+                            <span>🎙️ Listen to Speech Coach Advice</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <p className="text-xs text-slate-300 leading-relaxed bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/80">
+                      {coachText}
+                    </p>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-500 text-xs">
+              No Q&A history recorded for this session.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* TAB 1: Improvement Plan & Drills (PRD D7 & FR14) */}
       {activeTab === 'improvement' && (

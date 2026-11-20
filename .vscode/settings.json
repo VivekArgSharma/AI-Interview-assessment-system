@@ -1,0 +1,7 @@
+{
+  "python.defaultInterpreterPath": "C:\\Users\\VIVEK\\AppData\\Local\\Programs\\Python\\Python310\\python.exe",
+  "python.analysis.extraPaths": [
+    "c:\\Users\\VIVEK\\OneDrive\\Desktop\\ai-interview\\backend",
+    "c:\\Users\\VIVEK\\OneDrive\\Desktop\\ai-interview"
+  ]
+}

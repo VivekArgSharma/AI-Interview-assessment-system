@@ -22,9 +22,10 @@ import { User } from '../types';
 
 interface PortalLoginPageProps {
   onLoginSuccess: (user: User, targetRole: 'candidate' | 'recruiter' | 'reviewer' | 'admin') => void;
+  onOpenExaminerDemo?: () => void;
 }
 
-export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({ onLoginSuccess }) => {
+export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({ onLoginSuccess, onOpenExaminerDemo }) => {
   const [activeTab, setActiveTab] = useState<'candidate' | 'recruiter'>('candidate');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +122,37 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({ onLoginSuccess
         <div className="max-w-md mx-auto mb-6 bg-rose-50 border border-rose-200 text-rose-700 text-xs p-4 rounded-xl flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {/* Quick Examiner Viva Showcase Gateway */}
+      {onOpenExaminerDemo && (
+        <div className="max-w-5xl mx-auto w-full mb-8 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/30 rounded-3xl p-5 sm:p-6 shadow-lg text-white flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600/30 border border-indigo-400/40 text-indigo-300 flex items-center justify-center shrink-0">
+              <GraduationCap className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  For Evaluators, Professors & Invigilators:
+                </span>
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                  Viva Mode
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Inspect side-by-side flawed vs exemplar candidate answers, live audio playback in realistic AI voice, and test your mic live in 60 seconds without login.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onOpenExaminerDemo}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-all shrink-0 flex items-center gap-2"
+          >
+            <span>Launch Examiner Demo</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
       )}
 

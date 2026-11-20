@@ -41,6 +41,7 @@ except Exception as e:
     TS_LANG = None
 
 from .text_encoder import TextEncoder
+from .llm_question_generator import LLMQuestionGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -744,79 +745,17 @@ class RepoGroundedAssessmentService:
                 "Designed event-driven message consumer with dead-letter queue routing and exponential backoff retries."
             ]
 
-        # Generate hyper-specific probing interview questions tailored directly to their resume
-        generated_questions = []
-        for idx, claim in enumerate(extracted_claims):
-            qid = f"gq_resume_{idx+1}"
-            claim_lower = claim.lower()
-
-            if any(k in claim_lower for k in ["cache", "caching", "redis", "hit rate", "latency"]):
-                category = "Cache Architecture & Invalidation"
-                title = "Cache Stampede & Invalidation Strategy"
-                q_text = f"In your resume you state: '{claim}'. When thousands of concurrent requests hit a newly expired key in that project, why did you structure the cache invalidation and stampede protection this way, and what trade-offs did you make between cache staleness and database load?"
-                constructs = ["TTL expiration", "stampede lock / mutex", "stale-while-revalidate", "randomized jitter"]
-                exemplar = (
-                    "In this architecture, I structured the caching layer with an in-memory singleflight lock backed by Redis with randomized TTL jitter. "
-                    "When a hot key expires under high concurrency, only one worker acquires the lease to repopulate from the database while concurrent requests receive the previous cached value via stale-while-revalidate. "
-                    "This eliminated database thundering herd completely, trading a small potential staleness window for guaranteed sub-ten-millisecond latency."
-                )
-                segments = [
-                    {"text": "In this architecture, I structured the caching layer with an in-memory singleflight lock backed by Redis with randomized TTL jitter.", "pause_after_sec": 0.5, "emphasis_words": ["singleflight lock", "randomized TTL jitter"]},
-                    {"text": "When a hot key expires, only one worker queries the database while concurrent requests receive the stale value safely.", "pause_after_sec": 0.45, "emphasis_words": ["queries the database", "stale value safely"]},
-                    {"text": "This eliminated thundering herd cliffs completely, trading minimal staleness for sub-ten-millisecond response guarantees.", "pause_after_sec": 0.5, "emphasis_words": ["thundering herd", "response guarantees"]}
-                ]
-            elif any(k in claim_lower for k in ["payment", "idempotency", "transaction", "order", "charge", "duplicate"]):
-                category = "Distributed Reliability & Idempotency"
-                title = "Idempotency State Transitions & Gateway Timeouts"
-                q_text = f"Your resume highlights: '{claim}'. If a downstream payment gateway or third-party service charges the customer but times out before your application receives the HTTP response, how does your system guarantee idempotency on retry without double-charging?"
-                constructs = ["idempotency key", "two-phase state lock", "gateway reference token", "reconciliation worker"]
-                exemplar = (
-                    "To guarantee zero duplicate charges, we propagate a client-generated idempotency key directly to the gateway as the transaction reference ID. "
-                    "When a timeout occurs, subsequent retries pass the exact same reference ID, which the gateway deduplicates automatically. "
-                    "In our database, we lock the token in a PENDING state with a short expiry, and a background reconciliation job verifies charge state before publishing failures to the dead-letter queue."
-                )
-                segments = [
-                    {"text": "To guarantee zero duplicate charges, we propagate a client-generated idempotency key directly as the gateway reference ID.", "pause_after_sec": 0.5, "emphasis_words": ["idempotency key", "reference ID"]},
-                    {"text": "When a timeout occurs, subsequent retries pass that exact token, which the gateway deduplicates automatically.", "pause_after_sec": 0.45, "emphasis_words": ["deduplicates automatically"]},
-                    {"text": "A background reconciliation job verifies charge status before routing any stuck transactions to the dead-letter queue.", "pause_after_sec": 0.5, "emphasis_words": ["reconciliation job", "dead-letter queue"]}
-                ]
-            else:
-                category = "Concurrency & System Scalability"
-                title = f"Design & Scalability of {claim[:30]}..."
-                q_text = f"Referencing your project achievement: '{claim}'. Why did you choose this architectural structure over alternative patterns, and what happens to concurrency, thread contention, and memory when your workload spikes by 10x?"
-                constructs = ["concurrency boundaries", "thread/coroutine pool", "backpressure", "circuit breaker"]
-                exemplar = (
-                    "I chose an asynchronous, event-driven architecture with bounded coroutine pools specifically to preserve predictable memory overhead under sudden traffic surges. "
-                    "Instead of spinning up unbounded threads, incoming requests enter a rate-limited queue that applies backpressure when downstream latency spikes. "
-                    "This protects the service from out-of-memory crashes while maintaining graceful degradation through circuit breakers."
-                )
-                segments = [
-                    {"text": "I chose an asynchronous, event-driven architecture with bounded coroutine pools to preserve predictable memory overhead.", "pause_after_sec": 0.5, "emphasis_words": ["bounded coroutine pools", "predictable memory"]},
-                    {"text": "Incoming requests enter a rate-limited queue that applies backpressure when downstream latency spikes.", "pause_after_sec": 0.45, "emphasis_words": ["backpressure", "latency spikes"]},
-                    {"text": "This guarantees stability under ten-X traffic surges while circuit breakers isolate failing components.", "pause_after_sec": 0.5, "emphasis_words": ["ten-X traffic surges", "circuit breakers"]}
-                ]
-
-            q_obj = {
-                "question_id": qid,
-                "title": title,
-                "category": category,
-                "source_claim": claim,
-                "target_file": "Uploaded Candidate Resume",
-                "line_range": f"Claim #{idx+1}",
-                "question_text": q_text,
-                "grounded_context": f"Grounded directly in candidate resume claim: '{claim}'",
-                "key_code_constructs": constructs,
-                "anti_cheat_rubric": [
-                    "Must defend specific trade-offs made in this project rather than generic textbook theory.",
-                    "Must explain failure boundary handling under timeout or contention."
-                ],
-                "exemplar_defense": {
-                    "full_text": exemplar,
-                    "speech_segments": segments
-                }
-            }
-            generated_questions.append(q_obj)
-            _CUSTOM_QUESTIONS_CACHE[qid] = q_obj
+        # Synthesize deep probing interview questions via LLM (Pollinations.ai -> Ollama local fallback)
+        llm_result = LLMQuestionGenerator.generate_questions(
+            resume_text=extracted_text,
+            detected_skills=detected_skills,
+            claims=extracted_claims,
+            code_context=code_content,
+            count=3
+        )
+        generated_questions = llm_result.get("questions", [])
+        for q in generated_questions:
+            _CUSTOM_QUESTIONS_CACHE[q["question_id"]] = q
 
         # If custom code was also uploaded, run Tree-Sitter
         code_ast_summary = None
@@ -846,6 +785,9 @@ class RepoGroundedAssessmentService:
                 for i, c in enumerate(extracted_claims)
             ],
             "grounded_questions": generated_questions,
+            "llm_provider": llm_result.get("provider", "pollinations_ai"),
+            "llm_tier": llm_result.get("provider_tier", "primary_pollinations"),
+            "generation_time_ms": llm_result.get("generation_time_ms", 0),
             "code_ast": code_ast_summary,
             "pgvector_ready": True
         }

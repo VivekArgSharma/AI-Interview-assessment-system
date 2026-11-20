@@ -14,6 +14,7 @@ import {
   Radio
 } from 'lucide-react';
 import { InterviewTrack, StageInfo } from '../types';
+import { voiceEngine, DEFAULT_VOICES } from '../services/voiceEngine';
 
 interface InterviewSetupModalProps {
   isOpen: boolean;
@@ -40,7 +41,7 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
   const [selectedTrackId, setSelectedTrackId] = useState<string>(initialTrackId);
   const [difficulty, setDifficulty] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
   const [durationMinutes, setDurationMinutes] = useState<number>(10);
-  const [voicePreference, setVoicePreference] = useState<string>('default');
+  const [voicePreference, setVoicePreference] = useState<string>('en-US-JennyNeural');
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [consentGranted, setConsentGranted] = useState<boolean>(true);
 
@@ -132,16 +133,9 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
   };
 
   const playVoiceSample = () => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance("Welcome to your interview. Let's begin the evaluation.");
-      const voice = availableVoices.find((v) => v.name === voicePreference);
-      if (voice) {
-        utterance.voice = voice;
-      }
-      utterance.rate = 1.0;
-      window.speechSynthesis.speak(utterance);
-    }
+    voiceEngine.speak("Welcome to your interview. Let's begin your multimodal performance assessment.", {
+      voice: voicePreference,
+    });
   };
 
   const handleStart = async () => {
@@ -292,10 +286,14 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
               onChange={(e) => setVoicePreference(e.target.value)}
               className="w-full bg-slate-800 border border-slate-700 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-hidden"
             >
-              <option value="default">Default System Voice</option>
+              {DEFAULT_VOICES.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name} &bull; {v.role}
+                </option>
+              ))}
               {availableVoices.map((v) => (
                 <option key={v.name} value={v.name}>
-                  {v.name} ({v.lang})
+                  [Client Local] {v.name} ({v.lang})
                 </option>
               ))}
             </select>

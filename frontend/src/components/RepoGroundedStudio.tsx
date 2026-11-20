@@ -37,7 +37,6 @@ export const RepoGroundedStudio: React.FC = () => {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // Ingested Candidate Data
   const [candidateProfile, setCandidateProfile] = useState<{
     name: string;
     filename: string;
@@ -45,6 +44,9 @@ export const RepoGroundedStudio: React.FC = () => {
     claims: ResumeClaimData[];
     questions: GroundedQuestionData[];
     codeAst?: any;
+    llmProvider?: string;
+    llmTier?: string;
+    generationTimeMs?: number;
   } | null>(null);
 
   // Selected Question & Candidate Answer State
@@ -112,6 +114,9 @@ export const RepoGroundedStudio: React.FC = () => {
         claims: res.claims || [],
         questions: res.grounded_questions || [],
         codeAst: res.code_ast,
+        llmProvider: res.llm_provider,
+        llmTier: res.llm_tier,
+        generationTimeMs: res.generation_time_ms,
       });
 
       if (res.grounded_questions.length > 0) {
@@ -150,6 +155,9 @@ export const RepoGroundedStudio: React.FC = () => {
         claims: res.claims || [],
         questions: res.grounded_questions || [],
         codeAst: res.code_ast,
+        llmProvider: res.llm_provider,
+        llmTier: res.llm_tier,
+        generationTimeMs: res.generation_time_ms,
       });
 
       if (res.grounded_questions.length > 0) {
@@ -184,6 +192,9 @@ export const RepoGroundedStudio: React.FC = () => {
         claims: repo.resume_claims,
         questions: sampleQuestions,
         codeAst: repo.files[0],
+        llmProvider: 'Pollinations.ai (openai-fast)',
+        llmTier: 'primary_pollinations',
+        generationTimeMs: 1200,
       });
 
       if (sampleQuestions.length > 0) {
@@ -570,13 +581,28 @@ export const RepoGroundedStudio: React.FC = () => {
                 <UserCheck className="w-6 h-6" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-extrabold text-base text-slate-900">
                     {candidateProfile?.name}
                   </h3>
                   <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-200">
                     ✓ Resume Ingested
                   </span>
+                  {candidateProfile?.llmProvider && (
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 shadow-2xs ${
+                      candidateProfile.llmTier === 'primary_pollinations'
+                        ? 'bg-violet-50 text-violet-700 border-violet-200'
+                        : candidateProfile.llmTier === 'fallback_ollama'
+                        ? 'bg-amber-50 text-amber-800 border-amber-200'
+                        : 'bg-blue-50 text-blue-700 border-blue-200'
+                    }`}>
+                      <Sparkles className="w-3 h-3" />
+                      <span>AI: {candidateProfile.llmProvider}</span>
+                      {candidateProfile.generationTimeMs ? (
+                        <span className="opacity-75 font-mono">({(candidateProfile.generationTimeMs / 1000).toFixed(1)}s)</span>
+                      ) : null}
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5 font-mono">
                   Source: {candidateProfile?.filename} • {candidateProfile?.claims.length} claims extracted
@@ -642,7 +668,20 @@ export const RepoGroundedStudio: React.FC = () => {
                   >
                     <div className="flex items-center justify-between text-[11px] font-mono mb-1.5">
                       <span className="font-bold text-indigo-700">{q.category}</span>
-                      <span className="text-slate-400 text-[10px]">{q.line_range}</span>
+                      <div className="flex items-center gap-1.5">
+                        {q.generation_source && (
+                          <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                            q.generation_source.includes('pollinations')
+                              ? 'bg-violet-100 text-violet-700'
+                              : q.generation_source.includes('ollama')
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {q.generation_source.includes('pollinations') ? 'Pollinations' : q.generation_source.includes('ollama') ? 'Ollama' : 'AST Grounded'}
+                          </span>
+                        )}
+                        <span className="text-slate-400 text-[10px]">{q.line_range}</span>
+                      </div>
                     </div>
                     <h4 className="font-bold text-xs text-slate-900 leading-snug">{q.title}</h4>
                     {q.source_claim && (

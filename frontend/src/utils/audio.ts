@@ -1,7 +1,7 @@
 /**
- * Audio processing utilities for in-browser PCM WAV encoding and decoding.
- * Converts browser-recorded WebM/Opus audio to standard 16kHz mono 16-bit PCM WAV.
- * This guarantees zero external ffmpeg requirements on the backend.
+ * Audio processing utilities for in-browser high-definition voice recording,
+ * noise suppression, peak normalization, and PCM WAV encoding.
+ * Guarantees zero ffmpeg dependency and optimal input for Whisper STT and VAD.
  */
 
 export function encodeWav(samples: Float32Array, sampleRate: number): Blob {
@@ -43,6 +43,12 @@ export function encodeWav(samples: Float32Array, sampleRate: number): Blob {
   return new Blob([view], { type: 'audio/wav' });
 }
 
+/**
+ * High-definition audio conversion:
+ * 1. Resamples to 16kHz mono (Whisper requirement).
+ * 2. Applies an 80Hz high-pass filter to eliminate desk hum and low-end air turbulence.
+ * 3. Dynamic peak normalization to ensure quiet speech is clearly heard by Whisper.
+ */
 export async function convertBlobToWav(blob: Blob, targetSampleRate: number = 16000): Promise<Blob> {
   if (!blob || blob.size === 0) {
     return blob;
@@ -63,22 +69,30 @@ export async function convertBlobToWav(blob: Blob, targetSampleRate: number = 16
     const numTargetSamples = Math.max(1, Math.round(audioBuffer.duration * targetSampleRate));
     const offlineCtx = new OfflineAudioContext(1, numTargetSamples, targetSampleRate);
 
+    // High-pass filter at 80Hz to strip rumble & microphone pops
+    const highpass = offlineCtx.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 80;
+
     const source = offlineCtx.createBufferSource();
     source.buffer = audioBuffer;
-    source.connect(offlineCtx.destination);
+
+    source.connect(highpass);
+    highpass.connect(offlineCtx.destination);
     source.start(0);
 
     const renderedBuffer = await offlineCtx.startRendering();
     const monoSamples = renderedBuffer.getChannelData(0);
 
-    // Peak-normalize quiet microphone audio so speech signal is clear and distinct
+    // Dynamic AGC Peak Normalization: brings speech into optimal -3dBFS window
     let maxAmp = 0;
     for (let i = 0; i < monoSamples.length; i++) {
       const abs = Math.abs(monoSamples[i]);
       if (abs > maxAmp) maxAmp = abs;
     }
-    if (maxAmp > 0.005 && maxAmp < 0.50) {
-      const gain = 0.85 / maxAmp;
+
+    if (maxAmp > 0.005 && maxAmp < 0.65) {
+      const gain = 0.88 / maxAmp;
       for (let i = 0; i < monoSamples.length; i++) {
         monoSamples[i] = Math.max(-1, Math.min(1, monoSamples[i] * gain));
       }
@@ -93,4 +107,24 @@ export async function convertBlobToWav(blob: Blob, targetSampleRate: number = 16
     console.warn('Error converting audio to WAV in browser, falling back to original blob:', err);
     return blob;
   }
+}
+
+/**
+ * Returns optimized media stream constraints with acoustic echo cancellation,
+ * noise suppression, and auto gain control enabled for clear voice pickup.
+ */
+export async function getStudioMicrophoneStream(): Promise<MediaStream> {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    throw new Error('Microphone audio recording is not supported in this browser environment.');
+  }
+
+  return await navigator.mediaDevices.getUserMedia({
+    audio: {
+      channelCount: 1,
+      sampleRate: 16000,
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    },
+  });
 }

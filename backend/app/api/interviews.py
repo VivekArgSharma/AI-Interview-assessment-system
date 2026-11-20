@@ -1,7 +1,7 @@
 import logging
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from ..db.database import get_db
@@ -414,16 +414,23 @@ def get_session_report(
     score_config = report.score_configuration or {}
     criteria_breakdown = score_config.get("criteria_breakdown", [])
 
+    from ..services.exemplar_coach_service import ExemplarCoachService
+
     answers = db.query(Answer).filter(Answer.session_id == session.id).all()
     qa_history = []
     for a in answers:
+        q_text = a.question.question_text if a.question else ""
+        coach_data = ExemplarCoachService.get_exemplar_and_coach(q_text, a.transcript)
         qa_history.append({
             "answer_id": a.id,
             "question_id": a.question_id,
-            "question_text": a.question.question_text if a.question else "",
+            "question_text": q_text,
             "question_type": a.question.question_type if a.question else "initial",
             "stage": a.question.interview_stage if a.question else "",
             "transcript": a.transcript,
+            "exemplar_answer": coach_data.get("exemplar_answer", ""),
+            "key_takeaways": coach_data.get("key_takeaways", []),
+            "speech_coach_feedback": coach_data.get("speech_coach_feedback", ""),
             "audio_duration_seconds": a.audio_duration_seconds,
             "has_audio": bool(a.audio_storage_key),
             "assessments": [
@@ -460,3 +467,48 @@ def get_session_report(
         qa_history=qa_history,
         recommendations=recommendations
     )
+
+# ----------------- Realistic Neural Voice & TTS Endpoints -----------------
+
+@router.get("/voice/voices")
+def get_available_voices():
+    """
+    Returns the curated set of realistic human neural voices for interviewers and speech coaches.
+    """
+    from ..services.voice_synthesizer import VoiceSynthesizer
+    return VoiceSynthesizer.get_available_voices()
+
+@router.get("/voice/speak")
+async def speak_text(
+    text: str = Query(..., min_length=1),
+    voice: Optional[str] = Query("en-US-JennyNeural"),
+    rate: Optional[str] = Query("+0%")
+):
+    """
+    Synthesizes text into high-definition human neural audio stream using edge-tts.
+    Cached on disk for instantaneous zero-latency replay.
+    """
+    from ..services.voice_synthesizer import VoiceSynthesizer
+    synth = VoiceSynthesizer.get_instance()
+    try:
+        filepath = await synth.synthesize_to_file(text=text, voice=voice, rate=rate)
+        return FileResponse(
+            path=filepath,
+            media_type="audio/mpeg",
+            filename="speech.mp3",
+            headers={"Cache-Control": "public, max-age=86400"}
+        )
+    except Exception as e:
+        logger.error(f"Voice synthesis endpoint failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Voice synthesis failed: {str(e)}")
+
+# ----------------- Invigilator / Examiner Demo Showcase -----------------
+
+@router.get("/demo/showcase")
+def get_invigilator_showcase():
+    """
+    Returns curated demo interview scenarios with suboptimal vs exemplar responses,
+    rubric evaluation metrics, and vocal delivery coaching for viva / invigilator presentation.
+    """
+    from ..services.exemplar_coach_service import ExemplarCoachService
+    return ExemplarCoachService.get_invigilator_demo_data()

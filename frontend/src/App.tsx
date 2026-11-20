@@ -12,6 +12,7 @@ import { EvaluationDashboardPage } from './pages/EvaluationDashboardPage';
 import { AdminPrivacyPage } from './pages/AdminPrivacyPage';
 import { MockInterviewStudioPage } from './pages/MockInterviewStudioPage';
 import { PortalLoginPage } from './pages/PortalLoginPage';
+import { ExaminerDemoShowcase } from './pages/ExaminerDemoShowcase';
 import { InterviewSetupModal } from './components/InterviewSetupModal';
 import { ConsentModal } from './components/ConsentModal';
 import { AuthModal } from './components/AuthModal';
@@ -293,6 +294,7 @@ export const App: React.FC = () => {
             {/* Gateway Portal & Dummy Login Page */}
             {currentPage === 'portal_login' && (
               <PortalLoginPage
+                onOpenExaminerDemo={() => setCurrentPage('examiner_demo')}
                 onLoginSuccess={(user, role) => {
                   setCurrentUser(user);
                   setActiveRole(role);
@@ -354,6 +356,10 @@ export const App: React.FC = () => {
                 onStartNewPractice={() => setIsSetupModalOpen(true)}
                 onViewReportById={handleViewReportById}
               />
+            )}
+
+            {currentPage === 'examiner_demo' && (
+              <ExaminerDemoShowcase />
             )}
 
             {currentPage === 'mock_practice' && (

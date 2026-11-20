@@ -650,6 +650,9 @@ export class ApiService {
     detected_skills: string[];
     claims: ResumeClaimData[];
     grounded_questions: GroundedQuestionData[];
+    llm_provider?: string;
+    llm_tier?: string;
+    generation_time_ms?: number;
     code_ast?: any;
     pgvector_ready: boolean;
   }> {
@@ -704,6 +707,43 @@ export class ApiService {
       throw new Error(err?.detail || 'Failed to evaluate repo grounded answer');
     }
     return res.json();
+  }
+
+  // ==================== Voice & Neural Speech ====================
+
+  static async getAvailableVoices(): Promise<any[]> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/voice/voices`);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('Could not fetch server voices:', e);
+    }
+    return [];
+  }
+
+  static getVoiceAudioUrl(text: string, voice: string = 'en-US-JennyNeural', rate: string = '+0%'): string {
+    const params = new URLSearchParams({
+      text,
+      voice,
+      rate
+    });
+    return `${API_BASE_URL}/voice/speak?${params.toString()}`;
+  }
+
+  // ==================== Invigilator / Demo Showcase ====================
+
+  static async getInvigilatorShowcase(): Promise<any[]> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/demo/showcase`);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('Could not fetch demo showcase:', e);
+    }
+    return [];
   }
 }
 

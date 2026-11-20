@@ -30,7 +30,8 @@ interface AudioRecorderProps {
   isSubmittingAssessment: boolean;
 }
 
-import { convertBlobToWav } from '../utils/audio';
+import { convertBlobToWav, getStudioMicrophoneStream } from '../utils/audio';
+import { AudioVisualizer } from './AudioVisualizer';
 
 export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   onTranscriptReady,
@@ -39,6 +40,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
   isSubmittingAssessment,
 }) => {
   const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [liveMicStream, setLiveMicStream] = useState<MediaStream | null>(null);
   const [recordingSeconds, setRecordingSeconds] = useState<number>(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(initialAudioUrl);
@@ -81,13 +83,8 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
         throw new Error('Your browser does not support microphone audio recording. You can upload an audio file instead.');
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+      const stream = await getStudioMicrophoneStream();
+      setLiveMicStream(stream);
 
       // Prefer standard audio formats supported by browser
       let mimeType = 'audio/webm;codecs=opus';
@@ -114,6 +111,7 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
 
         // Stop all media tracks to release microphone hardware
         stream.getTracks().forEach((track) => track.stop());
+        setLiveMicStream(null);
 
         // Decode browser WebM/Opus audio and encode to standard 16kHz mono PCM WAV
         const wavBlob = await convertBlobToWav(rawBlob);
@@ -344,6 +342,17 @@ export const AudioRecorder: React.FC<AudioRecorderProps> = ({
               </button>
             )}
           </div>
+        </div>
+
+        {/* Audio Waveform Visualizer */}
+        <div className="mt-4">
+          <AudioVisualizer
+            stream={liveMicStream}
+            isActive={isRecording}
+            accentColor="rose"
+            height={36}
+            label={isRecording ? "Live Microphone Spectral Stream • Noise Suppression Active" : undefined}
+          />
         </div>
 
         {/* Audio Player Widget */}

@@ -226,22 +226,24 @@ class AudioTranscriber:
 
         # 4. Transcribe directly from NumPy array (no ffmpeg dependency!)
         try:
-            # Normalize peak amplitude if the recorded audio is quiet
-            max_amp = float(np.max(np.abs(audio_16k))) if len(audio_16k) > 0 else 0.0
-            if 0.001 < max_amp < 0.60:
-                audio_for_whisper = (audio_16k / max_amp) * 0.85
+            # Remove DC offset & peak normalize for maximum Whisper clarity
+            audio_centered = audio_16k - np.mean(audio_16k)
+            max_amp = float(np.max(np.abs(audio_centered))) if len(audio_centered) > 0 else 0.0
+            if 0.001 < max_amp < 0.70:
+                audio_for_whisper = (audio_centered / max_amp) * 0.90
             else:
-                audio_for_whisper = audio_16k
+                audio_for_whisper = audio_centered
 
-            # Enforce English and anti-hallucination inference parameters
+            # Enforce English, anti-hallucination, and domain vocabulary conditioning
             result = self.model.transcribe(
                 audio_for_whisper,
                 language="en",
                 temperature=0.0,
                 condition_on_previous_text=False,  # Stops looping hallucinations
-                no_speech_threshold=0.5,           # Ignores low-level hum/silence
+                no_speech_threshold=0.6,           # Resilient against low-level mic hum
                 compression_ratio_threshold=2.4,  # Rejects repetitive gibberish
                 logprob_threshold=-1.0,
+                initial_prompt="Professional interview response discussing software engineering, architecture, system design, trade-offs, and metrics.",
                 fp16=False,
                 verbose=False
             )
