@@ -150,30 +150,28 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentTrack = tracks.find((t) => t.id === selectedTrackId) || tracks[0];
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl p-6 shadow-2xl relative text-slate-100 my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs p-4 overflow-y-auto font-sans">
+      <div className="bg-white border border-stone-200 rounded-none w-full max-w-2xl p-6 sm:p-8 shadow-2xl relative text-stone-900 my-8 space-y-6">
         <button
           onClick={() => {
             stopMicTest();
             onClose();
           }}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+          className="absolute top-5 right-5 text-stone-400 hover:text-stone-800 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 bg-cyan-950 text-cyan-400 border border-cyan-800">
-              PRD Version 1.0
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-[10px] uppercase font-mono font-bold tracking-wider px-2.5 py-0.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-none">
+              PRD Version 1.0 • Pre-Flight
             </span>
-            <span className="text-xs text-slate-400">Pre-Interview Configuration</span>
+            <span className="text-xs text-stone-500">Multimodal Session Config</span>
           </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">Setup Interview Session</h2>
-          <p className="text-xs text-slate-400 mt-1">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-stone-900 tracking-tight">Setup Interview Session</h2>
+          <p className="text-xs text-stone-600 mt-1 leading-relaxed">
             Configure your interview track, duration, voice preferences, and verify your microphone.
           </p>
         </div>
@@ -181,7 +179,7 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
         <div className="space-y-6">
           {/* 1. Track Selection */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-bold text-stone-800 uppercase tracking-wider mb-2">
               1. Choose Interview Track
             </label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -191,25 +189,25 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
                   <div
                     key={track.id}
                     onClick={() => setSelectedTrackId(track.id)}
-                    className={`p-3.5 border cursor-pointer transition-all ${
+                    className={`p-4 border cursor-pointer transition-all rounded-none ${
                       isSelected
-                        ? 'bg-slate-800/90 border-cyan-500 shadow-md ring-1 ring-cyan-500/50'
-                        : 'bg-slate-850 border-slate-700/80 hover:border-slate-600'
+                        ? 'bg-orange-50/50 border-orange-500 shadow-xs ring-1 ring-orange-500'
+                        : 'bg-stone-50/50 border-stone-200 hover:border-orange-300'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-bold text-white">{track.name}</span>
+                      <span className="text-xs font-bold text-stone-900">{track.name}</span>
                       {isSelected ? (
-                        <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+                        <CheckCircle2 className="w-4 h-4 text-orange-600" />
                       ) : (
-                        <div className="w-4 h-4 rounded-full border border-slate-600" />
+                        <div className="w-4 h-4 rounded-none border border-stone-300" />
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed mb-2">
+                    <p className="text-[11px] text-stone-600 line-clamp-2 leading-relaxed mb-2">
                       {track.description}
                     </p>
-                    <div className="flex items-center gap-1.5 text-[10px] text-slate-300">
-                      <Layers className="w-3 h-3 text-cyan-400" />
+                    <div className="flex items-center gap-1.5 text-[10px] text-stone-500 font-semibold">
+                      <Layers className="w-3.5 h-3.5 text-orange-600" />
                       <span>{track.stages?.length || 5} Conversational Stages</span>
                     </div>
                   </div>
@@ -221,7 +219,7 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
           {/* 2. Difficulty & Duration */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-stone-800 uppercase tracking-wider mb-2">
                 2. Difficulty Level
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -230,10 +228,10 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
                     key={lvl}
                     type="button"
                     onClick={() => setDifficulty(lvl)}
-                    className={`py-2 px-2 text-center text-xs font-semibold capitalize border transition-colors ${
+                    className={`py-2 px-2 text-center text-xs font-bold uppercase tracking-wider rounded-none border transition-colors ${
                       difficulty === lvl
-                        ? 'bg-cyan-950/80 border-cyan-500 text-cyan-200'
-                        : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                        ? 'bg-orange-600 border-orange-600 text-white shadow-xs'
+                        : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
                     }`}
                   >
                     {lvl}
@@ -243,7 +241,7 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-bold text-stone-800 uppercase tracking-wider mb-2">
                 3. Estimated Duration
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -252,13 +250,13 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
                     key={mins}
                     type="button"
                     onClick={() => setDurationMinutes(mins)}
-                    className={`py-2 px-2 text-center text-xs font-semibold border transition-colors flex items-center justify-center gap-1.5 ${
+                    className={`py-2 px-2 text-center text-xs font-bold uppercase tracking-wider rounded-none border transition-colors flex items-center justify-center gap-1.5 ${
                       durationMinutes === mins
-                        ? 'bg-cyan-950/80 border-cyan-500 text-cyan-200'
-                        : 'bg-slate-800/60 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-600'
+                        ? 'bg-orange-600 border-orange-600 text-white shadow-xs'
+                        : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
                     }`}
                   >
-                    <Clock className="w-3 h-3" />
+                    <Clock className="w-3.5 h-3.5" />
                     <span>{mins}m</span>
                   </button>
                 ))}
@@ -269,13 +267,13 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
           {/* 3. Voice Preference */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+              <label className="text-xs font-bold text-stone-800 uppercase tracking-wider">
                 4. AI Interviewer Voice
               </label>
               <button
                 type="button"
                 onClick={playVoiceSample}
-                className="text-[11px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                className="text-xs font-bold uppercase tracking-wider text-orange-600 hover:text-orange-700 flex items-center gap-1.5"
               >
                 <Volume2 className="w-3.5 h-3.5" />
                 <span>Test Voice Audio</span>
@@ -284,11 +282,11 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
             <select
               value={voicePreference}
               onChange={(e) => setVoicePreference(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 px-3 py-2 text-xs text-white focus:border-cyan-500 focus:outline-hidden"
+              className="w-full bg-white border border-stone-300 rounded-none px-3.5 py-2.5 text-xs text-stone-800 focus:border-orange-500 outline-none font-semibold"
             >
               {DEFAULT_VOICES.map((v) => (
                 <option key={v.id} value={v.id}>
-                  {v.name} &bull; {v.role}
+                  {v.name} • {v.role}
                 </option>
               ))}
               {availableVoices.map((v) => (
@@ -300,19 +298,19 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
           </div>
 
           {/* 4. Microphone Test & Consent */}
-          <div className="p-3.5 bg-slate-950/60 border border-slate-800 space-y-3">
+          <div className="p-4 bg-stone-50 border border-stone-200 rounded-none space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Mic className="w-4 h-4 text-cyan-400" />
-                <span className="text-xs font-semibold text-slate-200">Microphone Audio Test</span>
+                <Mic className="w-4 h-4 text-orange-600" />
+                <span className="text-xs font-bold uppercase tracking-wider text-stone-800">Microphone Audio Test</span>
               </div>
               <button
                 type="button"
                 onClick={isTestingMic ? stopMicTest : startMicTest}
-                className={`px-3 py-1 text-xs font-semibold uppercase tracking-wider border transition-colors ${
+                className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-none border transition-colors ${
                   isTestingMic
-                    ? 'bg-rose-900/60 border-rose-700 text-rose-200'
-                    : 'bg-slate-800 hover:bg-slate-700 border-slate-600 text-slate-200'
+                    ? 'bg-rose-50 border-rose-300 text-rose-700 animate-pulse'
+                    : 'bg-white hover:bg-stone-100 border-stone-200 text-stone-700 shadow-xs'
                 }`}
               >
                 {isTestingMic ? 'Stop Test' : 'Check Mic'}
@@ -320,16 +318,16 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
             </div>
 
             {isTestingMic && (
-              <div>
-                <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[11px] text-stone-500 font-semibold mb-1">
                   <span>Input Volume Level:</span>
-                  <span className={micVolume > 20 ? 'text-emerald-400 font-bold' : 'text-slate-400'}>
+                  <span className={micVolume > 20 ? 'text-emerald-600 font-bold' : 'text-stone-500'}>
                     {micVolume > 10 ? 'Microphone Active' : 'Speak into mic...'}
                   </span>
                 </div>
-                <div className="w-full h-2 bg-slate-800 rounded-none overflow-hidden flex">
+                <div className="w-full h-2.5 bg-stone-200 rounded-none overflow-hidden flex border border-stone-300">
                   <div
-                    className="h-full bg-linear-to-r from-emerald-500 via-yellow-400 to-rose-500 transition-all duration-75"
+                    className="h-full bg-gradient-to-r from-emerald-500 via-orange-400 to-rose-500 transition-all duration-75"
                     style={{ width: `${micVolume}%` }}
                   />
                 </div>
@@ -337,21 +335,21 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
             )}
 
             {micError && (
-              <div className="p-2 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-none flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{micError}</span>
               </div>
             )}
 
-            <div className="flex items-start gap-2 pt-1 border-t border-slate-800/80">
+            <div className="flex items-start gap-2.5 pt-2 border-t border-stone-200">
               <input
                 type="checkbox"
                 id="interviewConsent"
                 checked={consentGranted}
                 onChange={(e) => setConsentGranted(e.target.checked)}
-                className="mt-0.5 rounded-none bg-slate-800 border-slate-700 text-cyan-600 focus:ring-0"
+                className="mt-0.5 rounded-none border-stone-300 text-orange-600 focus:ring-0"
               />
-              <label htmlFor="interviewConsent" className="text-[11px] text-slate-400 leading-snug">
+              <label htmlFor="interviewConsent" className="text-xs text-stone-600 leading-relaxed">
                 I understand this session evaluates spoken dialogue and that audio is processed to analyze speaking rate, pauses, and rubric criteria.
               </label>
             </div>
@@ -359,14 +357,14 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
         </div>
 
         {/* Start Button */}
-        <div className="mt-6 pt-4 border-t border-slate-800 flex justify-end gap-3">
+        <div className="pt-4 border-t border-stone-200 flex justify-end gap-3">
           <button
             type="button"
             onClick={() => {
               stopMicTest();
               onClose();
             }}
-            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold uppercase tracking-wider transition-colors"
+            className="px-5 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold uppercase tracking-wider rounded-none transition-colors"
           >
             Cancel
           </button>
@@ -374,7 +372,7 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
             type="button"
             disabled={!consentGranted || isLoading}
             onClick={handleStart}
-            className="px-6 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-2"
+            className="px-6 py-2.5 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold uppercase tracking-wider rounded-none transition-colors flex items-center gap-2 shadow-xs"
           >
             {isLoading ? (
               <>

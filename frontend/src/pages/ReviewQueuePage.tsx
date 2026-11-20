@@ -70,16 +70,16 @@ export const ReviewQueuePage: React.FC<ReviewQueuePageProps> = ({ onRefreshCount
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+    <div className="w-full max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 py-10 space-y-8 font-sans">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-stone-200">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Human Reviewer Queue</h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-bold border border-amber-300">
+            <h1 className="text-3xl font-extrabold text-stone-900 tracking-tight">Human Reviewer Queue</h1>
+            <span className="px-3 py-1 rounded-none bg-orange-50 text-orange-800 text-xs font-bold border border-orange-200 uppercase tracking-wider font-mono">
               {queue.length} Pending
             </span>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs sm:text-sm text-stone-500 mt-1">
             Sessions routed here when multimodal prediction confidence intervals are wide (D3) or when a candidate contests a timestamped score (D9).
           </p>
         </div>

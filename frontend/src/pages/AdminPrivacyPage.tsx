@@ -79,12 +79,12 @@ export const AdminPrivacyPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
+    <div className="w-full max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 py-10 space-y-8 font-sans">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-stone-200">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Privacy, Retention & Audit Console</h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <h1 className="text-3xl font-extrabold text-stone-900 tracking-tight">Privacy, Retention & Audit Console</h1>
+          <p className="text-xs sm:text-sm text-stone-500 mt-1">
             Enforce GDPR compliance, manage raw media TTL purges (PRD Section 6 FR23), and inspect system audit logs.
           </p>
         </div>

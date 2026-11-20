@@ -46,15 +46,15 @@ export const ModelInsightsPage: React.FC<ModelInsightsPageProps> = ({
   };
 
   return (
-    <div className="max-w-6xl mx-auto py-6 space-y-8">
+    <div className="w-full max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 py-10 space-y-8 font-sans">
       {/* Page Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-200">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold uppercase tracking-tight text-slate-900 flex items-center gap-2">
-            <Cpu className="w-5 h-5 text-slate-700" />
+          <h2 className="text-2xl sm:text-3xl font-extrabold uppercase tracking-tight text-stone-900 flex items-center gap-2.5">
+            <Cpu className="w-6 h-6 text-orange-600" />
             Model Insights & Technical Architecture
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-stone-500 mt-1">
             Real-time telemetry, Sentence-BERT embedding pipeline diagnostics, and empirical benchmark evaluation.
           </p>
         </div>

@@ -4,7 +4,7 @@ interface AudioVisualizerProps {
   stream?: MediaStream | null;
   isActive: boolean;
   isAiSpeaking?: boolean;
-  accentColor?: 'indigo' | 'emerald' | 'rose' | 'amber';
+  accentColor?: 'orange' | 'indigo' | 'emerald' | 'rose' | 'amber';
   height?: number;
   label?: string;
 }
@@ -13,7 +13,7 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   stream,
   isActive,
   isAiSpeaking = false,
-  accentColor = 'indigo',
+  accentColor = 'orange',
   height = 48,
   label,
 }) => {
@@ -23,13 +23,14 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
   const analyserRef = useRef<AnalyserNode | null>(null);
 
   const colorMap = {
+    orange: { bar: '#ea580c', glow: 'rgba(234, 88, 12, 0.4)' },
     indigo: { bar: '#6366f1', glow: 'rgba(99, 102, 241, 0.4)' },
     emerald: { bar: '#10b981', glow: 'rgba(16, 185, 129, 0.4)' },
     rose: { bar: '#f43f5e', glow: 'rgba(244, 63, 94, 0.4)' },
     amber: { bar: '#f59e0b', glow: 'rgba(245, 158, 11, 0.4)' },
   };
 
-  const theme = colorMap[accentColor] || colorMap.indigo;
+  const theme = colorMap[accentColor] || colorMap.orange;
 
   useEffect(() => {
     const canvas = canvasRef.current;

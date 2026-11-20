@@ -274,31 +274,31 @@ export const MockInterviewStudioPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
+    <div className="w-full max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 py-10 space-y-8 font-sans">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+      <div className="bg-white border border-stone-200 rounded-none p-6 sm:p-8 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="px-3 py-1 rounded-none text-[10px] font-bold uppercase tracking-wider bg-orange-50 text-orange-700 border border-orange-200">
               PRISM AI Studio
             </span>
-            <span className="text-xs text-slate-400">•</span>
-            <span className="text-xs font-semibold text-slate-600">Candidate Multimodal Inspection</span>
+            <span className="text-xs text-stone-400">•</span>
+            <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">Candidate Multimodal Inspection</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-4xl font-extrabold text-stone-900 tracking-tight">
             Mock Interview Practice & AI Observation Studio
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-3xl">
+          <p className="text-xs sm:text-sm text-stone-600 mt-2 max-w-3xl leading-relaxed">
             Record your answer via microphone or text. The system evaluates speech pacing, rubric alignment,
             and 5-head ensemble confidence, pinpoints exact deficits, and generates an AI-voiced exemplar answer.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
           <div className="text-right">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Trained Models</span>
-            <span className="text-xs font-mono font-semibold text-emerald-600 flex items-center gap-1 justify-end">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 block">Trained Models</span>
+            <span className="text-xs font-mono font-bold text-emerald-600 flex items-center gap-1.5 justify-end mt-1">
+              <span className="w-2 h-2 rounded-none bg-emerald-500 animate-pulse" />
               S-BERT + Prosody + Tree-Sitter AST
             </span>
           </div>
@@ -306,21 +306,21 @@ export const MockInterviewStudioPage: React.FC = () => {
       </div>
 
       {/* Studio Mode Selector Switcher */}
-      <div className="flex items-center gap-3 mt-6 border-b border-slate-200 pb-3">
+      <div className="flex items-center gap-3 border-b border-stone-200 pb-3">
         <button
           onClick={() => {
             stopExemplarSpeech();
             setStudioMode('repo_grounded');
           }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-none text-xs font-bold uppercase tracking-wider transition-all ${
             studioMode === 'repo_grounded'
-              ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-500/20'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              ? 'bg-orange-600 text-white shadow-xs'
+              : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
           }`}
         >
           <GitBranch className="w-4 h-4" />
           <span>Repo & Resume Grounded Studio (Tree-Sitter AST + pgvector)</span>
-          <span className="bg-emerald-400 text-slate-900 text-[10px] font-black px-1.5 py-0.2 rounded uppercase">
+          <span className="bg-emerald-400 text-stone-900 text-[10px] font-black px-1.5 py-0.5 rounded-none uppercase">
             Anti-Cheat
           </span>
         </button>
@@ -330,10 +330,10 @@ export const MockInterviewStudioPage: React.FC = () => {
             stopExemplarSpeech();
             setStudioMode('curated_mock');
           }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-none text-xs font-bold uppercase tracking-wider transition-all ${
             studioMode === 'curated_mock'
-              ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-500/20'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              ? 'bg-orange-600 text-white shadow-xs'
+              : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
           }`}
         >
           <Sparkles className="w-4 h-4" />

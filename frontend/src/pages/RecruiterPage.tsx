@@ -107,30 +107,30 @@ export const RecruiterPage: React.FC<RecruiterPageProps> = ({ onViewScorecard })
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
+    <div className="w-full max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 py-10 space-y-8 font-sans">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-stone-200">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Recruiter Role Builder & Invites</h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <h1 className="text-3xl font-extrabold text-stone-900 tracking-tight">Recruiter Role Builder & Invites</h1>
+          <p className="text-xs sm:text-sm text-stone-500 mt-1">
             Draft AI rubrics from Job Descriptions, configure scenario simulations (S1-S3, N1-N3), and generate single-use candidate invite links.
           </p>
         </div>
         <button
           onClick={() => onViewScorecard('prism-demo-session-s1')}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 transition-colors shadow-xs"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-none text-xs font-bold uppercase tracking-wider bg-orange-50 border border-orange-200 text-orange-700 hover:bg-orange-100 transition-colors shadow-xs"
         >
-          <BarChart3 className="w-4 h-4" />
+          <BarChart3 className="w-4 h-4 text-orange-600" />
           <span>View Demo Recruiter Scorecard</span>
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Role Builder Form */}
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-5">
-          <div className="flex items-center gap-2 pb-3 border-b border-slate-200">
-            <Briefcase className="w-4 h-4 text-indigo-600" />
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Create New Interview Role</h2>
+        <div className="lg:col-span-7 bg-white border border-stone-200 rounded-none p-6 sm:p-8 shadow-xs space-y-6">
+          <div className="flex items-center gap-2 pb-3 border-b border-stone-200">
+            <Briefcase className="w-4 h-4 text-orange-600" />
+            <h2 className="text-sm font-bold text-stone-900 uppercase tracking-wider">Create New Interview Role</h2>
           </div>
 
           <div>
@@ -238,7 +238,7 @@ export const RecruiterPage: React.FC<RecruiterPageProps> = ({ onViewScorecard })
           <button
             onClick={handleCreateRole}
             disabled={isCreating}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs disabled:opacity-50 transition-all"
+            className="flex items-center gap-2 px-6 py-3 rounded-none text-xs font-bold uppercase tracking-wider bg-orange-600 text-white hover:bg-orange-700 shadow-xs disabled:opacity-50 transition-all"
           >
             {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             <span>Save & Publish Role</span>
@@ -247,25 +247,25 @@ export const RecruiterPage: React.FC<RecruiterPageProps> = ({ onViewScorecard })
 
         {/* Right Column: Roles & Invite Links */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Active Interview Roles</h2>
-            <span className="text-xs text-slate-400">{roles.length} roles</span>
+          <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+            <h2 className="text-sm font-bold text-stone-900 uppercase tracking-wider">Active Interview Roles</h2>
+            <span className="text-xs font-mono font-bold text-stone-500">{roles.length} roles</span>
           </div>
 
           {isLoading ? (
-            <div className="p-8 text-center text-slate-400">Loading roles...</div>
+            <div className="p-8 text-center text-stone-400">Loading roles...</div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {roles.map((r) => (
-                <div key={r.id} className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-3">
+                <div key={r.id} className="p-5 bg-white border border-stone-200 rounded-none shadow-xs space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="text-xs font-bold text-slate-900">{r.title}</h3>
+                      <h3 className="text-sm font-bold text-stone-900">{r.title}</h3>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-none bg-orange-50 text-orange-700 border border-orange-200">
                           {r.scenario_type}
                         </span>
-                        <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                        <span className="text-[10px] text-stone-500 font-mono flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           {r.duration_minutes}m
                         </span>
@@ -277,13 +277,13 @@ export const RecruiterPage: React.FC<RecruiterPageProps> = ({ onViewScorecard })
                         setActiveInviteRole(r);
                         setGeneratedInvite(null);
                       }}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-bold uppercase tracking-wider bg-stone-100 text-stone-800 hover:bg-orange-50 hover:text-orange-700 border border-stone-200 transition-colors"
                     >
-                      <Link2 className="w-3.5 h-3.5 text-indigo-600" />
+                      <Link2 className="w-3.5 h-3.5 text-orange-600" />
                       <span>Invite</span>
                     </button>
                   </div>
-                  <p className="text-[11px] text-slate-600 line-clamp-2">{r.jd_text}</p>
+                  <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">{r.jd_text}</p>
                 </div>
               ))}
             </div>
@@ -293,49 +293,49 @@ export const RecruiterPage: React.FC<RecruiterPageProps> = ({ onViewScorecard })
 
       {/* Invite Modal */}
       {activeInviteRole && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-slate-900">Generate Candidate Invite Link</h3>
-              <button onClick={() => setActiveInviteRole(null)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-none border border-stone-200 shadow-xl max-w-md w-full p-6 sm:p-8 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+              <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">Generate Candidate Invite Link</h3>
+              <button onClick={() => setActiveInviteRole(null)} className="text-stone-400 hover:text-stone-700 text-base">✕</button>
             </div>
-            <p className="text-xs text-slate-500 mb-4">Role: <strong>{activeInviteRole.title}</strong></p>
+            <p className="text-xs text-stone-500">Role: <strong className="text-stone-900">{activeInviteRole.title}</strong></p>
 
-            <div className="space-y-3 mb-5">
+            <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Candidate Email (Optional)</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1">Candidate Email (Optional)</label>
                 <input
                   type="email"
                   value={candidateEmail}
                   onChange={(e) => setCandidateEmail(e.target.value)}
                   placeholder="candidate@example.com"
-                  className="w-full text-xs border border-slate-300 rounded-xl px-3 py-2 bg-white focus:outline-hidden"
+                  className="w-full text-xs border border-stone-300 rounded-none px-3.5 py-2.5 bg-white outline-none focus:border-orange-500"
                 />
               </div>
 
               {!generatedInvite ? (
                 <button
                   onClick={handleGenerateInvite}
-                  className="w-full py-2.5 rounded-xl bg-indigo-600 text-white font-semibold text-xs hover:bg-indigo-700"
+                  className="w-full py-3 rounded-none bg-orange-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-orange-700 shadow-xs"
                 >
                   Generate Single-Use Link
                 </button>
               ) : (
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                  <span className="text-[10px] font-bold text-emerald-700 uppercase">Invite Ready (Valid for 14 Days)</span>
+                <div className="p-4 bg-orange-50/50 border border-orange-200 rounded-none space-y-2">
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Invite Ready (Valid for 14 Days)</span>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
                       readOnly
                       value={`${window.location.origin}${generatedInvite.invite_url}`}
-                      className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono"
+                      className="w-full text-xs bg-white border border-stone-300 rounded-none px-3 py-2 font-mono"
                     />
                     <button
                       onClick={handleCopyLink}
-                      className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                      className="p-2 bg-orange-600 text-white rounded-none hover:bg-orange-700"
                       title="Copy"
                     >
-                      {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      {isCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>

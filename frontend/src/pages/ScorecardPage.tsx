@@ -191,16 +191,16 @@ export const ScorecardPage: React.FC<ScorecardPageProps> = ({
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
+    <div className="w-full max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 py-10 space-y-8 font-sans">
       {/* Top Breadcrumb & Status */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-stone-200">
         <div>
-          <button onClick={onBack} className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold mb-1 block">
+          <button onClick={onBack} className="text-xs text-orange-600 hover:text-orange-800 font-bold uppercase tracking-wider mb-1 block">
             ← Back
           </button>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Recruiter Multimodal Scorecard</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Candidate: <strong>{scorecard.candidate_name}</strong> • Role: <strong>{scorecard.role_title}</strong>
+          <h1 className="text-3xl font-extrabold text-stone-900 tracking-tight">Recruiter Multimodal Scorecard</h1>
+          <p className="text-xs text-stone-500 mt-1">
+            Candidate: <strong className="text-stone-900">{scorecard.candidate_name}</strong> • Role: <strong className="text-stone-900">{scorecard.role_title}</strong>
           </p>
         </div>
 

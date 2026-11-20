@@ -437,17 +437,17 @@ export const App: React.FC = () => {
         onUserChange={(u) => setCurrentUser(u)}
       />
 
-      {/* Professional White Mode Footer */}
-      <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-slate-600 font-medium">
-            <span className="font-bold text-slate-900">PRISM</span>
+      {/* Professional Orange & White Mode Footer */}
+      <footer className="border-t border-stone-200 bg-white py-6 text-center text-xs text-stone-500 shadow-xs">
+        <div className="w-full max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-stone-600 font-semibold">
+            <span className="font-extrabold text-stone-900">PRISM</span>
             <span>•</span>
             <span>Multimodal Interview Assessment Platform</span>
             <span>•</span>
-            <span className="text-indigo-600 font-semibold">PRD Compliant</span>
+            <span className="text-orange-600 font-bold">PRD Compliant</span>
           </div>
-          <div className="text-[11px] text-slate-500">
+          <div className="text-[11px] text-stone-500 font-mono">
             5-Head Deep Ensemble • Calibrated Uncertainty [ci_low, ci_high] • Privacy-by-Default (24h TTL)
           </div>
         </div>

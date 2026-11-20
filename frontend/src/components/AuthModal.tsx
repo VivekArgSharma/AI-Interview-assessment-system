@@ -76,36 +76,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4">
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-md p-6 shadow-2xl relative text-slate-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs p-4 font-sans">
+      <div className="bg-white border border-stone-200 rounded-none w-full max-w-md p-6 sm:p-8 shadow-2xl relative text-stone-900 space-y-6">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+          className="absolute top-5 right-5 text-stone-400 hover:text-stone-800 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
         {currentUser ? (
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
-                <UserIcon className="w-5 h-5" />
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-none bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-600">
+                <UserIcon className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">{currentUser.display_name}</h3>
-                <p className="text-xs text-slate-400">{currentUser.email}</p>
+                <h3 className="text-base font-bold text-stone-900">{currentUser.display_name}</h3>
+                <p className="text-xs text-stone-500 font-semibold">{currentUser.email}</p>
               </div>
             </div>
 
-            <div className="bg-slate-800/60 border border-slate-700/60 p-3 mb-5 text-xs space-y-2.5 text-slate-300">
+            <div className="bg-stone-50 border border-stone-200 p-4 rounded-none text-xs space-y-3 text-stone-700">
               <div className="flex items-center justify-between">
-                <span>Account Status:</span>
-                <span className="font-semibold text-emerald-400 uppercase tracking-wider text-[10px]">
+                <span className="font-bold text-stone-600">Account Status:</span>
+                <span className="font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-none uppercase tracking-wider text-[10px]">
                   {currentUser.account_status}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Audio Recording Consent:</span>
+                <span className="font-bold text-stone-600">Audio Consent:</span>
                 <button
                   type="button"
                   onClick={async () => {
@@ -118,20 +118,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       setError(e?.message || 'Failed to update consent.');
                     }
                   }}
-                  className={`text-[11px] px-2 py-0.5 border font-semibold transition-colors ${
+                  className={`text-[11px] px-2.5 py-1 rounded-none border font-bold uppercase tracking-wider transition-colors ${
                     currentUser.consent_recording
-                      ? 'bg-emerald-950 text-emerald-300 border-emerald-700 hover:bg-emerald-900'
-                      : 'bg-rose-950 text-rose-300 border-rose-800 hover:bg-rose-900'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                      : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
                   }`}
                 >
-                  {currentUser.consent_recording ? 'Consent Granted (Click to Revoke)' : 'Revoked (Click to Grant)'}
+                  {currentUser.consent_recording ? 'Granted (Click to Revoke)' : 'Revoked (Click to Grant)'}
                 </button>
               </div>
             </div>
 
             {/* Privacy & Recording Retention Controls */}
-            <div className="border-t border-slate-800 pt-4 mb-5 space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+            <div className="border-t border-stone-200 pt-4 space-y-3">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
                 Privacy & Data Retention
               </span>
               <button
@@ -151,7 +151,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     setIsLoading(false);
                   }
                 }}
-                className="w-full py-2 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-300 text-xs font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-700 text-xs font-bold uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-1.5"
               >
                 <span>Delete All My Voice Recordings</span>
               </button>
@@ -173,42 +173,42 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     }
                   }
                 }}
-                className="w-full py-1.5 text-rose-400 hover:text-rose-300 text-xs transition-colors text-center"
+                className="w-full py-1.5 text-rose-600 hover:text-rose-800 text-xs font-semibold transition-colors text-center"
               >
                 Permanently Delete Account
               </button>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-2">
               <button
                 type="button"
                 onClick={handleLogout}
-                className="flex-1 py-2.5 bg-rose-900/40 hover:bg-rose-900/60 border border-rose-700/60 text-rose-200 text-xs font-semibold uppercase tracking-wider transition-colors"
+                className="flex-1 py-2.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold uppercase tracking-wider rounded-none transition-colors"
               >
                 Sign Out
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs font-semibold uppercase tracking-wider transition-colors"
+                className="flex-1 py-2.5 bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-700 text-xs font-bold uppercase tracking-wider rounded-none transition-colors"
               >
                 Close
               </button>
             </div>
           </div>
         ) : (
-          <div>
-            <div className="text-center mb-6">
-              <h3 className="text-lg font-bold text-white tracking-tight">
+          <div className="space-y-5">
+            <div className="text-center">
+              <h3 className="text-lg font-bold text-stone-900 tracking-tight">
                 {isRegister ? 'Create Candidate Account' : 'Candidate Sign In'}
               </h3>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-stone-500 mt-1">
                 Access your personalized interview history, reports, and progress tracking.
               </p>
             </div>
 
             {error && (
-              <div className="mb-4 p-3 bg-rose-950/60 border border-rose-800 text-rose-300 text-xs flex items-center gap-2">
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-none flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{error}</span>
               </div>
@@ -217,47 +217,47 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <form onSubmit={handleSubmit} className="space-y-4">
               {isRegister && (
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">Full Name</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1">Full Name</label>
                   <div className="relative">
-                    <UserIcon className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                    <UserIcon className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
                     <input
                       type="text"
                       required
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       placeholder="Jane Doe"
-                      className="w-full bg-slate-800 border border-slate-700 pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-hidden"
+                      className="w-full bg-white border border-stone-300 rounded-none pl-9 pr-3 py-2.5 text-xs text-stone-900 placeholder-stone-400 focus:border-orange-500 outline-none"
                     />
                   </div>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Email Address</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1">Email Address</label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <Mail className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="candidate@example.com"
-                    className="w-full bg-slate-800 border border-slate-700 pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-hidden"
+                    className="w-full bg-white border border-stone-300 rounded-none pl-9 pr-3 py-2.5 text-xs text-stone-900 placeholder-stone-400 focus:border-orange-500 outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Password</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-stone-700 mb-1">Password</label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <Lock className="w-4 h-4 text-stone-400 absolute left-3 top-3.5" />
                   <input
                     type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-slate-800 border border-slate-700 pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-hidden"
+                    className="w-full bg-white border border-stone-300 rounded-none pl-9 pr-3 py-2.5 text-xs text-stone-900 placeholder-stone-400 focus:border-orange-500 outline-none"
                   />
                 </div>
               </div>
@@ -269,9 +269,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     id="consent"
                     checked={consentRecording}
                     onChange={(e) => setConsentRecording(e.target.checked)}
-                    className="mt-0.5 rounded-none bg-slate-800 border-slate-700 text-cyan-600 focus:ring-0"
+                    className="mt-0.5 rounded-none border-stone-300 text-orange-600 focus:ring-0"
                   />
-                  <label htmlFor="consent" className="text-[11px] text-slate-400 leading-snug">
+                  <label htmlFor="consent" className="text-xs text-stone-600 leading-snug">
                     I consent to voice audio recording and automated AI speech analysis for assessment coaching.
                   </label>
                 </div>
@@ -280,7 +280,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 mt-2"
+                className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-2 mt-2 shadow-xs"
               >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -292,14 +292,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </button>
             </form>
 
-            <div className="mt-4 pt-4 border-t border-slate-800 flex flex-col gap-2">
+            <div className="pt-4 border-t border-stone-200 flex flex-col gap-2">
               <button
                 type="button"
                 onClick={handleDemoLogin}
                 disabled={isLoading}
-                className="w-full py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 text-xs font-semibold transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-800 text-xs font-bold uppercase tracking-wider rounded-none transition-colors flex items-center justify-center gap-2 shadow-xs"
               >
-                <Shield className="w-3.5 h-3.5 text-cyan-400" />
+                <Shield className="w-4 h-4 text-orange-600" />
                 <span>Instant Sign In (Demo Account)</span>
               </button>
 
@@ -309,7 +309,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   setIsRegister(!isRegister);
                   setError(null);
                 }}
-                className="text-xs text-slate-400 hover:text-cyan-400 text-center transition-colors"
+                className="text-xs text-orange-600 hover:underline text-center font-bold pt-1"
               >
                 {isRegister ? 'Already have an account? Sign In' : "Don't have an account? Register here"}
               </button>

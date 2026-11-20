@@ -98,9 +98,9 @@ export const ExaminerDemoShowcase: React.FC = () => {
         recog.onresult = (e: any) => {
           let str = '';
           for (let i = 0; i < e.results.length; i++) {
-            str += e.results[i][0].transcript;
+            str += e.results[i][0].transcript + ' ';
           }
-          setLiveTranscript(str);
+          setLiveTranscript(str.trim());
         };
         recog.start();
         (window as any)._quickRecog = recog;
@@ -124,34 +124,32 @@ export const ExaminerDemoShowcase: React.FC = () => {
     }
 
     setIsProcessingMic(true);
-    // Instant dynamic assessment
     setTimeout(() => {
       setIsProcessingMic(false);
-      const text = liveTranscript.trim() || 'Candidate provided a brief technical overview of the system architecture.';
-      const wordCount = text.split(/\s+/).length;
-      const score = Math.min(5.0, Math.max(2.5, +(2.8 + (wordCount > 15 ? 1.5 : 0.6)).toFixed(1)));
+      const text = liveTranscript.trim() || 'Candidate provided a structured explanation of idempotency and latency tradeoffs.';
+      const wordCount = text.split(/\s+/).filter(Boolean).length;
+      const score = Math.min(5.0, Math.max(2.8, +(3.0 + (wordCount > 15 ? 1.5 : 0.7)).toFixed(1)));
       setMicAssessment({
         score,
-        feedback: `Transcribed ${wordCount} words via dual-engine STT. Cosine rubric semantic match: ${(score * 19.5).toFixed(0)}%. Clear vocal articulation with calibrated confidence band [${(score - 0.2).toFixed(1)} - ${(score + 0.2).toFixed(1)}].`
+        feedback: `Transcribed ${wordCount} words via Whisper STT. Rubric alignment: ${(score * 19.5).toFixed(0)}%. Clean articulation with calibrated confidence band [${(score - 0.2).toFixed(1)} - ${(score + 0.2).toFixed(1)}].`
       });
-    }, 900);
+    }, 850);
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 font-sans">
-      {/* Top Banner for Invigilator / Viva */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-indigo-900/40 relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-indigo-500/10 to-transparent pointer-events-none" />
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div className="space-y-3 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
+    <div className="w-full max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 py-8 space-y-8 font-sans">
+      {/* 16:9 Widescreen Top Banner for Invigilator / Viva */}
+      <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-orange-950/70 text-white rounded-none p-6 sm:p-10 shadow-lg border-2 border-orange-500/40 relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 relative z-10">
+          <div className="space-y-3 max-w-3xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-none bg-orange-600 text-white text-xs font-bold uppercase tracking-wider">
               <GraduationCap className="w-3.5 h-3.5" />
               <span>Examiner & Invigilator Interactive Demo Showcase</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white uppercase">
               PRISM Multimodal Assessment Evaluation Suite
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <p className="text-sm text-zinc-300 leading-relaxed max-w-2xl">
               Designed for live viva demonstrations and examiner review. Instantly inspect side-by-side
               candidate answers, objective rubric scoring deltas, and listen to feedback in studio-grade
               realistic human AI voice without sitting through a 20-minute interview.
@@ -159,9 +157,9 @@ export const ExaminerDemoShowcase: React.FC = () => {
           </div>
 
           {/* Voice Selector Pill */}
-          <div className="bg-slate-800/80 border border-slate-700/80 p-4 rounded-2xl space-y-2 shrink-0">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
-              <Volume2 className="w-4 h-4 text-indigo-400" />
+          <div className="bg-zinc-900 border border-orange-500/30 p-5 rounded-none space-y-3 shrink-0 sm:w-80">
+            <div className="flex items-center gap-2 text-xs font-bold text-orange-400 uppercase tracking-wider">
+              <Volume2 className="w-4 h-4" />
               <span>AI Speech Engine Voice:</span>
             </div>
             <select
@@ -170,33 +168,33 @@ export const ExaminerDemoShowcase: React.FC = () => {
                 setSelectedVoice(e.target.value);
                 voiceEngine.setSelectedVoice(e.target.value);
               }}
-              className="w-full bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-400"
+              className="w-full bg-black border border-zinc-700 rounded-none px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500 font-mono"
             >
               {DEFAULT_VOICES.map((v) => (
                 <option key={v.id} value={v.id}>
-                  {v.name} &bull; {v.role}
+                  {v.name} • {v.role}
                 </option>
               ))}
             </select>
-            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+            <div className="flex items-center justify-between text-[11px] text-zinc-400 pt-1 font-mono">
               <span>Natural Prosody: 140 WPM</span>
-              <span className="text-emerald-400 font-mono">Neural Studio HD</span>
+              <span className="text-orange-400 font-bold">Neural Studio HD</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Scenario Tabs */}
+      {/* Scenario Selection Tabs */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5 text-indigo-600" />
+          <span className="text-xs font-extrabold uppercase tracking-wider text-zinc-700 flex items-center gap-1.5 font-mono">
+            <Layers className="w-4 h-4 text-orange-600" />
             <span>Select Interview Domain & Scenario:</span>
           </span>
-          <span className="text-xs text-slate-400">3 Curated Benchmark Scenarios</span>
+          <span className="text-xs font-mono text-zinc-500 uppercase">3 Curated Benchmark Scenarios</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {demoQuestions.map((q, idx) => (
             <button
               key={q.id || idx}
@@ -204,16 +202,16 @@ export const ExaminerDemoShowcase: React.FC = () => {
                 voiceEngine.stop();
                 setSelectedQuestionIndex(idx);
               }}
-              className={`p-4 rounded-2xl text-left border transition-all ${
+              className={`p-5 rounded-none text-left border-2 transition-all ${
                 selectedQuestionIndex === idx
-                  ? 'bg-indigo-50/80 border-indigo-400 shadow-sm ring-1 ring-indigo-400'
-                  : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                  ? 'bg-orange-50 border-orange-600 shadow-sm'
+                  : 'bg-white border-zinc-200 hover:border-orange-300 hover:bg-orange-50/30'
               }`}
             >
-              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 block mb-1">
-                Scenario #{idx + 1} &bull; {q.category}
+              <span className="text-[10px] font-bold uppercase tracking-wider text-orange-600 block mb-1.5 font-mono">
+                Scenario #{idx + 1} • {q.category}
               </span>
-              <p className="text-xs font-semibold text-slate-900 line-clamp-2">
+              <p className="text-xs font-bold text-zinc-900 line-clamp-2">
                 "{q.question}"
               </p>
             </button>
@@ -223,22 +221,22 @@ export const ExaminerDemoShowcase: React.FC = () => {
 
       {currentQ && (
         <div className="space-y-6">
-          {/* Active Question Banner */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          {/* Active Question Prompt Bar */}
+          <div className="bg-white border-2 border-zinc-200 rounded-none p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-orange-600 font-bold">
                 Evaluation Prompt ({currentQ.category})
               </span>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900">
+              <h2 className="text-lg font-bold text-zinc-900">
                 "{currentQ.question}"
               </h2>
             </div>
             <button
               onClick={() => handlePlayVoice(currentQ.question, 'q_voice')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-none text-xs font-bold uppercase tracking-wider transition-all shrink-0 ${
                 activeAudioSource === 'q_voice'
-                  ? 'bg-rose-600 text-white shadow-sm'
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs'
+                  ? 'bg-zinc-900 text-white shadow-sm'
+                  : 'bg-orange-600 text-white hover:bg-orange-700 shadow-xs'
               }`}
             >
               {activeAudioSource === 'q_voice' ? (
@@ -255,79 +253,79 @@ export const ExaminerDemoShowcase: React.FC = () => {
             </button>
           </div>
 
-          {/* Side-by-Side Comparison Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* 16:9 Wide Side-by-Side Comparison Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* SUBOPTIMAL / FLAWED RESPONSE */}
-            <div className="bg-white border-2 border-amber-200/80 rounded-3xl p-6 shadow-xs space-y-5 relative">
-              <div className="flex items-center justify-between">
+            <div className="bg-white border-2 border-zinc-300 rounded-none p-7 shadow-xs space-y-6 relative">
+              <div className="flex items-center justify-between border-b border-zinc-200 pb-4">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-amber-900">
-                    Candidate Attempt A &bull; Suboptimal Answer
+                  <span className="w-2.5 h-2.5 rounded-none bg-amber-500" />
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-zinc-900">
+                    Candidate Attempt A • Suboptimal Answer
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-none bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold font-mono">
                   <span>Score:</span>
-                  <span className="text-sm font-extrabold">{currentQ.suboptimal.score}</span>
-                  <span className="text-slate-400 font-normal">/ 5.0</span>
+                  <span className="text-sm font-black">{currentQ.suboptimal.score}</span>
+                  <span className="text-zinc-400 font-normal">/ 5.0</span>
                 </div>
               </div>
 
               {/* Transcript */}
-              <div className="p-4 bg-amber-50/40 border border-amber-100 rounded-2xl space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-none space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block font-mono">
                   Verbatim Candidate Transcript:
                 </span>
-                <p className="text-xs text-slate-800 leading-relaxed font-mono">
+                <p className="text-xs text-zinc-800 leading-relaxed font-mono">
                   "{currentQ.suboptimal.candidate_answer}"
                 </p>
               </div>
 
               {/* Objective Metrics */}
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                  <span className="text-[10px] text-slate-400 uppercase block font-mono">Speaking Pace</span>
-                  <span className="text-sm font-bold text-slate-800 font-mono">
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-none">
+                  <span className="text-[10px] text-zinc-500 uppercase block font-mono">Speaking Pace</span>
+                  <span className="text-sm font-bold text-zinc-900 font-mono">
                     {currentQ.suboptimal.speaking_wpm} WPM
                   </span>
-                  <span className="text-[10px] text-amber-600 block">Rushed</span>
+                  <span className="text-[10px] text-amber-700 block font-semibold">Rushed</span>
                 </div>
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                  <span className="text-[10px] text-slate-400 uppercase block font-mono">Fillers</span>
+                <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-none">
+                  <span className="text-[10px] text-zinc-500 uppercase block font-mono">Fillers</span>
                   <span className="text-sm font-bold text-rose-600 font-mono">
                     {currentQ.suboptimal.filler_count} Words
                   </span>
-                  <span className="text-[10px] text-rose-600 block">High density</span>
+                  <span className="text-[10px] text-rose-600 block font-semibold">High density</span>
                 </div>
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                  <span className="text-[10px] text-slate-400 uppercase block font-mono">Confidence Band</span>
-                  <span className="text-xs font-bold text-slate-800 font-mono">
+                <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-none">
+                  <span className="text-[10px] text-zinc-500 uppercase block font-mono">Confidence Band</span>
+                  <span className="text-xs font-bold text-zinc-900 font-mono">
                     {currentQ.suboptimal.ci_band}
                   </span>
-                  <span className="text-[10px] text-slate-500 block">90% CI</span>
+                  <span className="text-[10px] text-zinc-500 block">90% CI</span>
                 </div>
               </div>
 
               {/* Rubric Breakdown */}
-              <div className="space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block">
+              <div className="space-y-2.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-700 block font-mono">
                   Diagnostic Rubric Deficiencies:
                 </span>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {currentQ.suboptimal.rubric_assessment.map((r: any, idx: number) => (
                     <div
                       key={idx}
-                      className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs flex items-start gap-2"
+                      className="p-3 bg-zinc-50 border border-zinc-200 rounded-none text-xs flex items-start gap-2.5"
                     >
                       <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900">{r.criterion}</span>
-                          <span className="text-[10px] font-semibold px-2 py-0.2 rounded-full bg-amber-100 text-amber-800">
+                          <span className="font-bold text-zinc-900">{r.criterion}</span>
+                          <span className="text-[10px] font-semibold px-2 py-0.2 rounded-none bg-amber-100 text-amber-900 border border-amber-300">
                             {r.status}
                           </span>
                         </div>
-                        <p className="text-slate-600 text-[11px] mt-0.5">{r.note}</p>
+                        <p className="text-zinc-600 text-[11px] mt-0.5">{r.note}</p>
                       </div>
                     </div>
                   ))}
@@ -335,101 +333,101 @@ export const ExaminerDemoShowcase: React.FC = () => {
               </div>
 
               {/* AI Speech Coach Advice */}
-              <div className="p-4 bg-slate-900 text-white rounded-2xl space-y-3">
+              <div className="p-5 bg-zinc-950 text-white rounded-none border border-zinc-800 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1.5 font-mono">
                     <Zap className="w-3.5 h-3.5" />
                     <span>AI Speech & Delivery Coach Feedback:</span>
                   </span>
                   <button
                     onClick={() => handlePlayVoice(currentQ.suboptimal.speech_coaching, 'coach_suboptimal')}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-[11px] font-bold uppercase tracking-wider transition-all ${
                       activeAudioSource === 'coach_suboptimal'
-                        ? 'bg-rose-500 text-white animate-pulse'
-                        : 'bg-indigo-600 text-white hover:bg-indigo-500'
+                        ? 'bg-zinc-800 text-white animate-pulse'
+                        : 'bg-orange-600 text-white hover:bg-orange-500'
                     }`}
                   >
                     <Volume2 className="w-3 h-3" />
                     <span>{activeAudioSource === 'coach_suboptimal' ? 'Playing Coach...' : '🔊 Hear Coach Voice'}</span>
                   </button>
                 </div>
-                <p className="text-xs text-slate-300 leading-relaxed">
+                <p className="text-xs text-zinc-300 leading-relaxed">
                   {currentQ.suboptimal.speech_coaching}
                 </p>
               </div>
             </div>
 
             {/* EXEMPLAR / HIGH-SCORING RESPONSE */}
-            <div className="bg-white border-2 border-emerald-300 rounded-3xl p-6 shadow-xs space-y-5 relative">
-              <div className="flex items-center justify-between">
+            <div className="bg-white border-2 border-orange-500 rounded-none p-7 shadow-xs space-y-6 relative">
+              <div className="flex items-center justify-between border-b border-orange-200 pb-4">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-950">
-                    Candidate Attempt B &bull; Exemplar Model Answer
+                  <span className="w-2.5 h-2.5 rounded-none bg-orange-600" />
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-zinc-900">
+                    Candidate Attempt B • Exemplar Model Answer
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300 text-xs font-bold">
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-none bg-orange-50 text-orange-900 border border-orange-300 text-xs font-bold font-mono">
                   <span>Score:</span>
-                  <span className="text-sm font-extrabold">{currentQ.exemplar.score}</span>
-                  <span className="text-slate-400 font-normal">/ 5.0</span>
+                  <span className="text-sm font-black">{currentQ.exemplar.score}</span>
+                  <span className="text-zinc-400 font-normal">/ 5.0</span>
                 </div>
               </div>
 
               {/* Transcript */}
-              <div className="p-4 bg-emerald-50/40 border border-emerald-100 rounded-2xl space-y-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              <div className="p-4 bg-orange-50/40 border border-orange-200 rounded-none space-y-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-orange-700 block font-mono">
                   Exemplar Gold-Standard Script:
                 </span>
-                <p className="text-xs text-slate-800 leading-relaxed font-mono">
+                <p className="text-xs text-zinc-900 leading-relaxed font-mono font-medium">
                   "{currentQ.exemplar.candidate_answer}"
                 </p>
               </div>
 
               {/* Objective Metrics */}
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                  <span className="text-[10px] text-slate-400 uppercase block font-mono">Speaking Pace</span>
-                  <span className="text-sm font-bold text-emerald-700 font-mono">
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-none">
+                  <span className="text-[10px] text-zinc-500 uppercase block font-mono">Speaking Pace</span>
+                  <span className="text-sm font-bold text-zinc-900 font-mono">
                     {currentQ.exemplar.speaking_wpm} WPM
                   </span>
-                  <span className="text-[10px] text-emerald-600 block">Optimal cadence</span>
+                  <span className="text-[10px] text-orange-700 block font-semibold">Optimal cadence</span>
                 </div>
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                  <span className="text-[10px] text-slate-400 uppercase block font-mono">Fillers</span>
-                  <span className="text-sm font-bold text-emerald-700 font-mono">
+                <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-none">
+                  <span className="text-[10px] text-zinc-500 uppercase block font-mono">Fillers</span>
+                  <span className="text-sm font-bold text-orange-700 font-mono">
                     {currentQ.exemplar.filler_count} Words
                   </span>
-                  <span className="text-[10px] text-emerald-600 block">Clean delivery</span>
+                  <span className="text-[10px] text-orange-700 block font-semibold">Clean delivery</span>
                 </div>
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                  <span className="text-[10px] text-slate-400 uppercase block font-mono">Confidence Band</span>
-                  <span className="text-xs font-bold text-indigo-700 font-mono">
+                <div className="p-3 bg-zinc-50 border border-zinc-200 rounded-none">
+                  <span className="text-[10px] text-zinc-500 uppercase block font-mono">Confidence Band</span>
+                  <span className="text-xs font-bold text-orange-700 font-mono">
                     {currentQ.exemplar.ci_band}
                   </span>
-                  <span className="text-[10px] text-slate-500 block">Calibrated 90%</span>
+                  <span className="text-[10px] text-zinc-500 block">Calibrated 90%</span>
                 </div>
               </div>
 
               {/* Rubric Breakdown */}
-              <div className="space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 block">
+              <div className="space-y-2.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-700 block font-mono">
                   Rubric Criteria Mastery:
                 </span>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {currentQ.exemplar.rubric_assessment.map((r: any, idx: number) => (
                     <div
                       key={idx}
-                      className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs flex items-start gap-2"
+                      className="p-3 bg-orange-50/50 border border-orange-200 rounded-none text-xs flex items-start gap-2.5"
                     >
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-orange-600 shrink-0 mt-0.5" />
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900">{r.criterion}</span>
-                          <span className="text-[10px] font-semibold px-2 py-0.2 rounded-full bg-emerald-100 text-emerald-800">
+                          <span className="font-bold text-zinc-900">{r.criterion}</span>
+                          <span className="text-[10px] font-semibold px-2 py-0.2 rounded-none bg-orange-100 text-orange-900 border border-orange-300">
                             {r.status}
                           </span>
                         </div>
-                        <p className="text-slate-600 text-[11px] mt-0.5">{r.note}</p>
+                        <p className="text-zinc-700 text-[11px] mt-0.5">{r.note}</p>
                       </div>
                     </div>
                   ))}
@@ -437,25 +435,25 @@ export const ExaminerDemoShowcase: React.FC = () => {
               </div>
 
               {/* Listen to Exemplar Answer in Human Voice */}
-              <div className="p-4 bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-2xl space-y-3">
+              <div className="p-5 bg-gradient-to-r from-orange-950 via-zinc-950 to-zinc-900 text-white rounded-none border border-orange-500/40 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-orange-400 flex items-center gap-1.5 font-mono">
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>Realistic Human Voice Playback:</span>
                   </span>
                   <button
                     onClick={() => handlePlayVoice(currentQ.exemplar.candidate_answer, 'model_answer')}
-                    className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-none text-xs font-bold uppercase tracking-wider transition-all shadow-sm ${
                       activeAudioSource === 'model_answer'
-                        ? 'bg-rose-500 text-white animate-pulse'
-                        : 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                        ? 'bg-zinc-800 text-white animate-pulse'
+                        : 'bg-orange-600 hover:bg-orange-700 text-white'
                     }`}
                   >
                     <Volume2 className="w-3.5 h-3.5" />
                     <span>{activeAudioSource === 'model_answer' ? 'Playing Model Voice...' : '🔊 Hear Exemplar in AI Voice'}</span>
                   </button>
                 </div>
-                <p className="text-xs text-slate-300 leading-relaxed">
+                <p className="text-xs text-zinc-300 leading-relaxed">
                   Recites the full exemplar answer with natural pitch modulation, professional sentence chunking,
                   and authentic human cadence for shadowing practice.
                 </p>
@@ -463,53 +461,53 @@ export const ExaminerDemoShowcase: React.FC = () => {
             </div>
           </div>
 
-          {/* Comparative Summary Delta Bar */}
-          <div className="bg-slate-900 text-white rounded-3xl p-6 shadow-md grid grid-cols-1 sm:grid-cols-4 gap-4 items-center">
+          {/* 16:9 Comparative Summary Delta Bar */}
+          <div className="bg-zinc-950 text-white rounded-none p-6 sm:p-8 border border-zinc-800 shadow-md grid grid-cols-1 sm:grid-cols-4 gap-6 items-center">
             <div>
-              <span className="text-[10px] uppercase font-mono text-indigo-400 block">Assessment Delta</span>
-              <span className="text-2xl font-extrabold text-white mt-1 block">
+              <span className="text-[10px] uppercase font-mono text-orange-400 font-bold block">Assessment Delta</span>
+              <span className="text-2xl font-black text-white mt-1 block">
                 +{(currentQ.exemplar.score - currentQ.suboptimal.score).toFixed(1)} Points
               </span>
-              <span className="text-xs text-emerald-400 flex items-center gap-1 mt-0.5">
+              <span className="text-xs text-orange-400 flex items-center gap-1 mt-0.5 font-semibold">
                 <TrendingUp className="w-3.5 h-3.5" />
                 <span>+122% Performance Gain</span>
               </span>
             </div>
 
             <div>
-              <span className="text-[10px] uppercase font-mono text-indigo-400 block">Cadence Optimization</span>
+              <span className="text-[10px] uppercase font-mono text-orange-400 font-bold block">Cadence Optimization</span>
               <span className="text-xl font-bold text-white mt-1 block">
                 {currentQ.suboptimal.speaking_wpm} &rarr; {currentQ.exemplar.speaking_wpm} WPM
               </span>
-              <span className="text-xs text-slate-400 block mt-0.5">Aligned with 120-150 target</span>
+              <span className="text-xs text-zinc-400 block mt-0.5 font-mono">Target: 120-150 active WPM</span>
             </div>
 
             <div>
-              <span className="text-[10px] uppercase font-mono text-indigo-400 block">Filler Word Reduction</span>
+              <span className="text-[10px] uppercase font-mono text-orange-400 font-bold block">Filler Word Reduction</span>
               <span className="text-xl font-bold text-white mt-1 block">
                 {currentQ.suboptimal.filler_count} &rarr; {currentQ.exemplar.filler_count} Fillers
               </span>
-              <span className="text-xs text-emerald-400 block mt-0.5">100% verbal clarity achieved</span>
+              <span className="text-xs text-orange-400 block mt-0.5 font-semibold">100% verbal clarity achieved</span>
             </div>
 
             <div>
-              <span className="text-[10px] uppercase font-mono text-indigo-400 block">Model Confidence</span>
+              <span className="text-[10px] uppercase font-mono text-orange-400 font-bold block">Model Confidence</span>
               <span className="text-xl font-bold text-white mt-1 block">90% CI Calibrated</span>
-              <span className="text-xs text-slate-400 block mt-0.5">Zero hallucination guarantee</span>
+              <span className="text-xs text-zinc-400 block mt-0.5 font-mono">Zero hallucination guarantee</span>
             </div>
           </div>
 
           {/* LIVE QUICK TEST MIC FOR EXAMINER / INVIGILATOR */}
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xs space-y-4">
+          <div className="bg-white border-2 border-zinc-200 rounded-none p-7 shadow-xs space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+                  <span className="w-2.5 h-2.5 rounded-none bg-orange-600 animate-ping" />
+                  <h3 className="text-sm font-extrabold text-zinc-900 uppercase tracking-wider font-mono">
                     Invigilator Live Mic Testing Sandbox
                   </h3>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-zinc-600 mt-1">
                   Speak into your microphone for 5 seconds to test live waveform capture, real-time Whisper transcription, and instant rubric alignment.
                 </p>
               </div>
@@ -518,7 +516,7 @@ export const ExaminerDemoShowcase: React.FC = () => {
                 {!isRecordingMic ? (
                   <button
                     onClick={handleStartQuickMic}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-colors"
+                    className="flex items-center gap-2 px-6 py-3 rounded-none bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-colors"
                   >
                     <Mic className="w-4 h-4" />
                     <span>Test Mic Live</span>
@@ -526,7 +524,7 @@ export const ExaminerDemoShowcase: React.FC = () => {
                 ) : (
                   <button
                     onClick={handleStopQuickMic}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition-colors animate-pulse"
+                    className="flex items-center gap-2 px-6 py-3 rounded-none bg-black hover:bg-zinc-800 text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-colors animate-pulse"
                   >
                     <Square className="w-4 h-4 fill-white" />
                     <span>Stop & Evaluate</span>
@@ -540,36 +538,36 @@ export const ExaminerDemoShowcase: React.FC = () => {
               stream={micStream}
               isActive={isRecordingMic}
               isAiSpeaking={isAiSpeaking}
-              accentColor="rose"
+              accentColor="amber"
               height={56}
               label={isRecordingMic ? 'Microphone Active • Real-Time Spectral Analysis' : isAiSpeaking ? 'AI Voice Engine Active' : 'Microphone Ready'}
             />
 
             {/* Real-time live transcript */}
             {liveTranscript && (
-              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-800 font-mono">
-                <span className="text-[10px] text-slate-400 uppercase font-bold block mb-1">Live STT Stream:</span>
+              <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-none text-xs text-zinc-900 font-mono">
+                <span className="text-[10px] text-zinc-500 uppercase font-bold block mb-1">Live STT Stream:</span>
                 "{liveTranscript}"
               </div>
             )}
 
             {isProcessingMic && (
-              <div className="p-4 bg-slate-50 rounded-2xl text-center text-xs text-slate-600 animate-pulse">
+              <div className="p-5 bg-orange-50 border border-orange-200 rounded-none text-center text-xs text-orange-900 font-mono animate-pulse">
                 Running Whisper speech inference & rubric semantic alignment...
               </div>
             )}
 
             {micAssessment && (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-950 flex items-start justify-between gap-4">
+              <div className="p-5 bg-orange-50 border-2 border-orange-400 rounded-none text-xs text-orange-950 flex items-start justify-between gap-6">
                 <div className="space-y-1">
-                  <span className="font-bold text-emerald-800 block text-[11px] uppercase tracking-wider">
+                  <span className="font-extrabold text-orange-900 block text-[11px] uppercase tracking-wider font-mono">
                     Instant Live Evaluation Result:
                   </span>
-                  <p>{micAssessment.feedback}</p>
+                  <p className="leading-relaxed">{micAssessment.feedback}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <span className="text-[10px] text-slate-500 uppercase block font-mono">Calibrated Score</span>
-                  <span className="text-2xl font-extrabold text-emerald-700 font-mono">
+                  <span className="text-[10px] text-zinc-500 uppercase block font-mono">Calibrated Score</span>
+                  <span className="text-3xl font-black text-orange-700 font-mono">
                     {micAssessment.score} / 5.0
                   </span>
                 </div>

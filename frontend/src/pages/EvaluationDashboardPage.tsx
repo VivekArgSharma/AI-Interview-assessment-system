@@ -43,20 +43,20 @@ export const EvaluationDashboardPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 font-sans">
+    <div className="w-full max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 py-10 space-y-8 font-sans">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-stone-200">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-3xl font-extrabold text-stone-900 tracking-tight">
             Evaluation & Inter-Rater Agreement Dashboard
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-stone-500 mt-1">
             Empirical benchmark metrics against 320+ rated responses (PRD Section 3 & 16): ICC agreement, Expected Calibration Error (ECE), and modality ablations.
           </p>
         </div>
         <button
           onClick={loadEvaluationData}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-none text-xs font-bold uppercase tracking-wider bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 shadow-xs"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           <span>Re-compute Metrics</span>

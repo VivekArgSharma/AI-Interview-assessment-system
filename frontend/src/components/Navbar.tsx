@@ -47,26 +47,26 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-slate-200/90 shadow-xs">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-40 bg-white border-b-2 border-orange-600 shadow-xs">
+      <div className="w-full max-w-[1720px] mx-auto px-6 sm:px-10 lg:px-14 h-16 flex items-center justify-between">
         {/* Brand */}
         <div
           onClick={() => onNavigate(activeRole === 'candidate' ? 'dashboard' : activeRole === 'recruiter' ? 'recruiter' : activeRole === 'reviewer' ? 'reviewer' : 'eval_dashboard')}
           className="flex items-center gap-3 cursor-pointer group select-none"
         >
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-xs group-hover:bg-indigo-700 transition-colors">
-            <Brain className="w-4 h-4" />
+          <div className="w-9 h-9 rounded-none bg-orange-600 flex items-center justify-center text-white shadow-xs group-hover:bg-orange-700 transition-colors">
+            <Brain className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-900 text-sm tracking-tight font-sans">
+              <span className="font-extrabold text-zinc-900 text-base tracking-tight font-sans">
                 PRISM
               </span>
-              <span className="text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                Multimodal AI
+              <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-none bg-orange-50 text-orange-700 border border-orange-200">
+                AI INTERVIEW
               </span>
             </div>
-            <p className="text-[10px] text-slate-500 hidden sm:block">Explainable Assessment Platform</p>
+            <p className="text-[10px] text-zinc-500 hidden sm:block uppercase tracking-wider font-mono">Multimodal Evaluation Platform</p>
           </div>
         </div>
 
@@ -74,15 +74,15 @@ export const Navbar: React.FC<NavbarProps> = ({
         {currentPage !== 'portal_login' ? (
           <div className="hidden md:flex items-center gap-2">
             <div
-              className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ${
+              className={`flex items-center gap-2 px-3 py-1 rounded-none text-xs font-bold border ${
                 activeRole === 'candidate'
-                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                  : 'bg-indigo-50 text-indigo-800 border border-indigo-200'
+                  ? 'bg-orange-50 text-orange-800 border-orange-300'
+                  : 'bg-zinc-100 text-zinc-800 border-zinc-300'
               }`}
             >
               <span
-                className={`w-2 h-2 rounded-full ${
-                  activeRole === 'candidate' ? 'bg-emerald-500' : 'bg-indigo-600'
+                className={`w-2 h-2 rounded-none ${
+                  activeRole === 'candidate' ? 'bg-orange-600' : 'bg-zinc-700'
                 }`}
               />
               <span>
@@ -94,8 +94,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   ? 'Reviewer Portal'
                   : 'Admin Portal'}
               </span>
-              <span className="text-slate-400 font-normal">|</span>
-              <span className="font-semibold text-slate-700">
+              <span className="text-zinc-400 font-normal">|</span>
+              <span className="font-semibold text-zinc-800">
                 {currentUser?.display_name ||
                   (activeRole === 'candidate' ? 'Alex Chen' : 'Sarah Jenkins')}
               </span>
@@ -103,7 +103,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+            <span className="text-xs font-semibold text-zinc-600 bg-orange-50 px-3 py-1 rounded-none border border-orange-200">
               PRISM Gateway • Select Portal
             </span>
           </div>
@@ -111,31 +111,30 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Navigation Links according to Active Role */}
         {currentPage !== 'portal_login' && (
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-1.5">
             <button
               onClick={() => onNavigate('examiner_demo')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all mr-1 ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-none text-xs font-bold transition-all mr-2 ${
                 currentPage === 'examiner_demo'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
+                  ? 'bg-orange-600 text-white shadow-xs'
+                  : 'bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-300'
               }`}
             >
-              <GraduationCap className="w-3.5 h-3.5 text-indigo-600 group-hover:text-indigo-700" />
+              <GraduationCap className="w-3.5 h-3.5 text-orange-600" />
               <span>Examiner Demo</span>
-              <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-indigo-200/80 text-indigo-900 font-extrabold uppercase">
+              <span className="text-[9px] px-1.5 py-0.2 rounded-none bg-orange-200 text-orange-950 font-extrabold uppercase">
                 Viva
               </span>
             </button>
 
             {activeRole === 'candidate' && (
-
             <>
               <button
                 onClick={() => onNavigate('dashboard')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-colors border ${
                   currentPage === 'dashboard'
-                    ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    ? 'bg-orange-600 text-white border-orange-600 font-bold'
+                    : 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
                 }`}
               >
                 <LayoutDashboard className="w-3.5 h-3.5" />
@@ -144,40 +143,40 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <button
                 onClick={() => onNavigate('mock_practice')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-colors border ${
                   currentPage === 'mock_practice'
-                    ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    ? 'bg-orange-600 text-white border-orange-600 font-bold'
+                    : 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                <Sparkles className="w-3.5 h-3.5 text-orange-500" />
                 <span>Mock Inspection Studio</span>
               </button>
 
               <button
                 onClick={() => onNavigate('live_interview')}
                 disabled={!hasActiveSession}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-colors border ${
                   currentPage === 'live_interview'
-                    ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200'
+                    ? 'bg-orange-600 text-white border-orange-600 font-bold'
                     : hasActiveSession
-                    ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    : 'text-slate-400 cursor-not-allowed opacity-50'
+                    ? 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
+                    : 'text-zinc-400 cursor-not-allowed opacity-50 border-transparent'
                 }`}
               >
-                <Radio className="w-3.5 h-3.5 text-rose-500" />
+                <Radio className="w-3.5 h-3.5 text-orange-600" />
                 <span>Interview Room</span>
               </button>
 
               <button
                 onClick={() => onNavigate('session_report')}
                 disabled={!hasActiveReport}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-colors border ${
                   currentPage === 'session_report'
-                    ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200'
+                    ? 'bg-orange-600 text-white border-orange-600 font-bold'
                     : hasActiveReport
-                    ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    : 'text-slate-400 cursor-not-allowed opacity-50'
+                    ? 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
+                    : 'text-zinc-400 cursor-not-allowed opacity-50 border-transparent'
                 }`}
               >
                 <FileText className="w-3.5 h-3.5" />
@@ -186,10 +185,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <button
                 onClick={() => onNavigate('progress')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-colors border ${
                   currentPage === 'progress'
-                    ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    ? 'bg-orange-600 text-white border-orange-600 font-bold'
+                    : 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
                 }`}
               >
                 <TrendingUp className="w-3.5 h-3.5" />
@@ -202,10 +201,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             <>
               <button
                 onClick={() => onNavigate('recruiter')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-colors border ${
                   currentPage === 'recruiter'
-                    ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    ? 'bg-orange-600 text-white border-orange-600 font-bold'
+                    : 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
                 }`}
               >
                 <Briefcase className="w-3.5 h-3.5" />
@@ -214,10 +213,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <button
                 onClick={() => onNavigate('scorecard')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-colors border ${
                   currentPage === 'scorecard'
-                    ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    ? 'bg-orange-600 text-white border-orange-600 font-bold'
+                    : 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
                 }`}
               >
                 <BarChart3 className="w-3.5 h-3.5" />
@@ -230,16 +229,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             <>
               <button
                 onClick={() => onNavigate('reviewer')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-colors border ${
                   currentPage === 'reviewer'
-                    ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    ? 'bg-orange-600 text-white border-orange-600 font-bold'
+                    : 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
                 }`}
               >
-                <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                <ShieldAlert className="w-3.5 h-3.5 text-orange-600" />
                 <span>Review Queue</span>
                 {reviewQueueCount > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-100 text-amber-800 font-bold border border-amber-300">
+                  <span className="px-1.5 py-0.2 rounded-none text-[10px] bg-orange-100 text-orange-800 font-bold border border-orange-300">
                     {reviewQueueCount}
                   </span>
                 )}
@@ -251,10 +250,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             <>
               <button
                 onClick={() => onNavigate('eval_dashboard')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-colors border ${
                   currentPage === 'eval_dashboard'
-                    ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    ? 'bg-orange-600 text-white border-orange-600 font-bold'
+                    : 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
                 }`}
               >
                 <BarChart3 className="w-3.5 h-3.5" />
@@ -263,10 +262,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <button
                 onClick={() => onNavigate('admin_privacy')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-colors border ${
                   currentPage === 'admin_privacy'
-                    ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    ? 'bg-orange-600 text-white border-orange-600 font-bold'
+                    : 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
                 }`}
               >
                 <Lock className="w-3.5 h-3.5" />
@@ -276,19 +275,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
 
           {/* System status & Switch Portal Button */}
-          <div className="flex items-center gap-2 pl-3 ml-2 border-l border-slate-200">
-            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-slate-500 mr-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="flex items-center gap-2 pl-3 ml-2 border-l border-zinc-200">
+            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-zinc-500 mr-1 font-mono">
+              <span className="w-2 h-2 rounded-none bg-orange-500 animate-pulse" />
               API Ready
             </span>
 
             {onSwitchPortal && (
               <button
                 onClick={onSwitchPortal}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all shadow-2xs"
-                title="Switch between Candidate and Recruiter portals"
+                className="flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-zinc-600 hover:text-orange-600 hover:bg-orange-50 border border-zinc-200 rounded-none transition-colors"
+                title="Switch Portal Gateway"
               >
-                <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-600" />
+                <ArrowLeftRight className="w-3 h-3 text-orange-600" />
                 <span className="hidden sm:inline">Switch Portal</span>
               </button>
             )}
