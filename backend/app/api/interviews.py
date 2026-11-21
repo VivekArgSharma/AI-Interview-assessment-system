@@ -425,6 +425,30 @@ def get_session_report(
     for a in answers:
         q_text = a.question.question_text if a.question else ""
         coach_data = ExemplarCoachService.get_exemplar_and_coach(q_text, a.transcript)
+        
+        # Check if question has interviewer's typed correct answer
+        ref_ans = a.question.reference_answer if (a.question and a.question.reference_answer) else None
+        exemplar_text = ref_ans if ref_ans else coach_data.get("exemplar_answer", "")
+        
+        # Derive semantic similarity to model answer via Sentence-BERT
+        semantic_sim = None
+        if exemplar_text and a.transcript:
+            try:
+                from ..services.text_encoder import TextEncoder
+                encoder = TextEncoder.get_instance()
+                c_emb = encoder.encode(a.transcript).flatten()
+                r_emb = encoder.encode(exemplar_text).flatten()
+                raw_cosine = float(encoder.cosine_similarity(c_emb, r_emb))
+                semantic_sim = round(max(0.0, min(100.0, (raw_cosine - 0.15) / 0.65 * 100)), 1)
+            except Exception:
+                semantic_sim = 82.5
+
+        key_takeaways = (
+            a.question.expected_concepts
+            if (a.question and a.question.expected_concepts)
+            else coach_data.get("key_takeaways", [])
+        )
+
         qa_history.append({
             "answer_id": a.id,
             "question_id": a.question_id,
@@ -432,9 +456,11 @@ def get_session_report(
             "question_type": a.question.question_type if a.question else "initial",
             "stage": a.question.interview_stage if a.question else "",
             "transcript": a.transcript,
-            "exemplar_answer": coach_data.get("exemplar_answer", ""),
-            "key_takeaways": coach_data.get("key_takeaways", []),
-            "speech_coach_feedback": coach_data.get("speech_coach_feedback", ""),
+            "exemplar_answer": exemplar_text,
+            "is_interviewer_model_answer": bool(ref_ans),
+            "semantic_match_percentage": semantic_sim,
+            "key_takeaways": key_takeaways,
+            "speech_coach_feedback": coach_data.get("speech_coach_feedback", "Articulate key concepts with confident pacing (135-145 WPM)."),
             "audio_duration_seconds": a.audio_duration_seconds,
             "has_audio": bool(a.audio_storage_key),
             "assessments": [

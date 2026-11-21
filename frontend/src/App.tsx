@@ -14,6 +14,7 @@ import { MockInterviewStudioPage } from './pages/MockInterviewStudioPage';
 import { PortalLoginPage } from './pages/PortalLoginPage';
 import { ExaminerDemoShowcase } from './pages/ExaminerDemoShowcase';
 import { MyInterviewsPage } from './pages/MyInterviewsPage';
+import { InterviewerStudioPage } from './pages/InterviewerStudioPage';
 import { InterviewSetupModal } from './components/InterviewSetupModal';
 import { ConsentModal } from './components/ConsentModal';
 import { AuthModal } from './components/AuthModal';
@@ -42,6 +43,7 @@ export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [reviewQueueCount, setReviewQueueCount] = useState<number>(1);
   const [scorecardSessionId, setScorecardSessionId] = useState<string>('prism-demo-session-s1');
+  const [interviewerTrack, setInterviewerTrack] = useState<'tech' | 'sales'>('tech');
 
   // Modals
   const [isSetupModalOpen, setIsSetupModalOpen] = useState<boolean>(false);
@@ -99,6 +101,14 @@ export const App: React.FC = () => {
       } catch {
         // User not logged in, show portal selection & dummy login gateway
         setCurrentPage('portal_login');
+      }
+
+      // Check if URL has ?invite= parameter
+      const params = new URLSearchParams(window.location.search);
+      const inviteParam = params.get('invite');
+      if (inviteParam) {
+        handleStartCustomInterviewByCode(inviteParam);
+        return;
       }
 
 
@@ -239,13 +249,32 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleStartCustomInterviewByCode = async (inviteCode: string) => {
+    try {
+      setIsLoading(true);
+      setGlobalError(null);
+      const session = await ApiService.startCustomInterviewByInvite({
+        invite_code: inviteCode.trim(),
+      });
+      setActiveSession(session);
+      setActiveRole('candidate');
+      setCurrentPage('live_interview');
+    } catch (err: any) {
+      console.error('Failed to launch invite interview:', err);
+      setGlobalError(err?.message || `Failed to start interview with code ${inviteCode}.`);
+      setCurrentPage('dashboard');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleViewScorecard = (sessionId: string) => {
     setScorecardSessionId(sessionId);
     setCurrentPage('scorecard');
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-indigo-500 selection:text-white antialiased">
+    <div className="min-h-screen bg-stone-50 text-stone-900 flex flex-col font-sans selection:bg-orange-500 selection:text-white antialiased">
       {/* Professional White Mode Navbar */}
       <Navbar
         currentPage={currentPage}
@@ -285,7 +314,7 @@ export const App: React.FC = () => {
       <main className="flex-1 pb-16">
         {isLoading && !activeSession ? (
           <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+            <Loader2 className="w-8 h-8 text-orange-600 animate-spin" />
             <p className="text-xs font-mono uppercase tracking-wider text-slate-500 font-semibold">
               Connecting to PRISM Assessment Engine & Modality Pipeline...
             </p>
@@ -295,19 +324,26 @@ export const App: React.FC = () => {
             {/* Gateway Portal & Dummy Login Page */}
             {currentPage === 'portal_login' && (
               <PortalLoginPage
-                onLoginSuccess={(user, role) => {
+                onLoginSuccess={(user, role, targetTrack) => {
                   setCurrentUser(user);
                   setActiveRole(role);
                   if (role === 'candidate') {
-                    setCurrentPage('my_interviews');
-                  } else if (role === 'recruiter') {
-                    setCurrentPage('recruiter');
-                  } else if (role === 'reviewer') {
-                    setCurrentPage('reviewer');
+                    if (targetTrack === 'sales') {
+                      setSelectedTrackId('sales');
+                    } else {
+                      setSelectedTrackId('bug_fixing');
+                    }
+                    setCurrentPage('dashboard');
                   } else {
-                    setCurrentPage('eval_dashboard');
+                    if (targetTrack === 'sales') {
+                      setInterviewerTrack('sales');
+                    } else {
+                      setInterviewerTrack('tech');
+                    }
+                    setCurrentPage('interviewer_studio');
                   }
                 }}
+                onStartCustomInterviewByCode={handleStartCustomInterviewByCode}
               />
             )}
 
@@ -329,6 +365,22 @@ export const App: React.FC = () => {
                 onQuickStartScenario={handleQuickStartScenario}
                 onNavigateToMockStudio={() => setCurrentPage('mock_practice')}
                 onNavigateToMyInterviews={() => setCurrentPage('my_interviews')}
+                onStartCustomInterviewByCode={handleStartCustomInterviewByCode}
+                onSwitchToInterviewer={() => {
+                  setActiveRole('recruiter');
+                  setCurrentPage('interviewer_studio');
+                }}
+              />
+            )}
+
+            {currentPage === 'interviewer_studio' && (
+              <InterviewerStudioPage
+                initialTrack={interviewerTrack}
+                onSwitchToCandidate={() => {
+                  setActiveRole('candidate');
+                  setCurrentPage('dashboard');
+                }}
+                onViewReportById={handleViewReportById}
               />
             )}
 

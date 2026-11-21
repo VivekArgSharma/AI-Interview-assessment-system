@@ -239,7 +239,18 @@ class InterviewSessionManager:
         session.current_stage_index += 1
         session.follow_up_count_current_stage = 0
 
-        if session.current_stage_index >= len(stages):
+        # Check if this session has pre-seeded custom questions (custom interview mode)
+        custom_q_list = (
+            db.query(Question)
+            .filter(Question.session_id == session.id, Question.question_type == "initial")
+            .order_by(Question.sequence_number)
+            .all()
+        )
+        has_custom_preseeded = len(custom_q_list) > 1 and session.mode == "custom_interview"
+
+        effective_total_stages = len(custom_q_list) if has_custom_preseeded else len(stages)
+
+        if session.current_stage_index >= effective_total_stages:
             # Interview Completed!
             session.status = "completed"
             session.completed_at = datetime.utcnow()
@@ -262,22 +273,27 @@ class InterviewSessionManager:
             }
         else:
             # Advance to Next Stage
-            next_stage = stages[session.current_stage_index]
-            session.current_stage = next_stage.get("stage_id", f"stage_{session.current_stage_index + 1}")
+            if has_custom_preseeded:
+                next_q = custom_q_list[session.current_stage_index]
+                session.current_stage = next_q.interview_stage
+                db.commit()
+            else:
+                next_stage = stages[session.current_stage_index]
+                session.current_stage = next_stage.get("stage_id", f"stage_{session.current_stage_index + 1}")
 
-            prompt_text = self._resolve_stage_prompt(next_stage, session.difficulty)
+                prompt_text = self._resolve_stage_prompt(next_stage, session.difficulty)
 
-            next_q = Question(
-                session_id=session.id,
-                question_text=prompt_text,
-                question_type="initial",
-                sequence_number=total_q_count + 1,
-                interview_stage=next_stage.get("stage_id", session.current_stage),
-                context_notes=next_stage.get("description", ""),
-                expected_concepts=next_stage.get("expected_concepts", [])
-            )
-            db.add(next_q)
-            db.commit()
+                next_q = Question(
+                    session_id=session.id,
+                    question_text=prompt_text,
+                    question_type="initial",
+                    sequence_number=total_q_count + 1,
+                    interview_stage=next_stage.get("stage_id", session.current_stage),
+                    context_notes=next_stage.get("description", ""),
+                    expected_concepts=next_stage.get("expected_concepts", [])
+                )
+                db.add(next_q)
+                db.commit()
 
             return {
                 "answer_id": answer.id,

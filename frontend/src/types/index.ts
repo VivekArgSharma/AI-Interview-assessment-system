@@ -317,6 +317,8 @@ export interface SessionReportData {
     stage: string;
     transcript: string;
     exemplar_answer?: string;
+    is_interviewer_model_answer?: boolean;
+    semantic_match_percentage?: number | null;
     key_takeaways?: string[];
     speech_coach_feedback?: string;
     audio_duration_seconds: number;

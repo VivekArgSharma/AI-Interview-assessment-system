@@ -49,6 +49,7 @@ class RoleModel(Base):
     delivery_weight = Column(Float, default=0.2, nullable=False)  # default low role-dependent weight
     presentation_weight = Column(Float, default=0.0, nullable=False)  # default 0 descriptive
     rubric_id = Column(String(36), ForeignKey("rubrics.id"), nullable=True)
+    custom_questions = Column(JSON, default=list)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     recruiter = relationship("User", back_populates="roles_created")
@@ -164,6 +165,7 @@ class Question(Base):
     interview_stage = Column(String(100), nullable=False)
     context_notes = Column(Text, nullable=True)
     expected_concepts = Column(JSON, default=list)
+    reference_answer = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     session = relationship("InterviewSession", back_populates="questions")

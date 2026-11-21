@@ -346,11 +346,18 @@ export const SessionReportPage: React.FC<SessionReportPageProps> = ({
 
                     {/* Exemplar Model Answer */}
                     <div className="p-5 bg-orange-50/30 border border-orange-200 rounded-none space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wider text-orange-900 flex items-center gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
                           <CheckCircle2 className="w-4 h-4 text-orange-600" />
-                          <span>Exemplar Model Answer (How to Answer Best):</span>
-                        </span>
+                          <span className="text-xs font-bold uppercase tracking-wider text-orange-900">
+                            {qa.is_interviewer_model_answer ? "Interviewer's Model Answer:" : "Exemplar Model Answer:"}
+                          </span>
+                          {qa.semantic_match_percentage != null && (
+                            <span className="text-[10px] font-mono font-extrabold px-2 py-0.5 bg-orange-600 text-white rounded-none">
+                              {qa.semantic_match_percentage}% Semantic Match
+                            </span>
+                          )}
+                        </div>
                         <button
                           onClick={() => handleToggleVoice(exemplarText, `exemplar_${idx}`)}
                           className={`flex items-center gap-2 px-4 py-1.5 rounded-none text-xs font-bold uppercase tracking-wider transition-all shadow-xs ${

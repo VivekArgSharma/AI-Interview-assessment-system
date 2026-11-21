@@ -15,7 +15,8 @@ import {
   ArrowLeftRight,
   LogOut,
   GraduationCap,
-  Award
+  Award,
+  Users
 } from 'lucide-react';
 import { HealthResponse, User } from '../types';
 
@@ -113,18 +114,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Navigation Links according to Active Role */}
         {currentPage !== 'portal_login' && (
           <nav className="flex items-center gap-1.5">
-            <button
-              onClick={() => onNavigate('my_interviews')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-none text-xs font-semibold transition-colors border mr-2 ${
-                currentPage === 'my_interviews'
-                  ? 'bg-orange-600 text-white border-orange-600 font-bold'
-                  : 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
-              }`}
-            >
-              <Award className="w-3.5 h-3.5 text-orange-600" />
-              <span>My Completed Interviews</span>
-            </button>
-
             {activeRole === 'candidate' && (
             <>
               <button
@@ -148,7 +137,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }`}
               >
                 <Award className="w-3.5 h-3.5 text-orange-600" />
-                <span>My Interviews & Better Answers</span>
+                <span>My Completed Interviews</span>
               </button>
 
               <button
@@ -164,51 +153,29 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               <button
-                onClick={() => onNavigate('live_interview')}
-                disabled={!hasActiveSession}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-colors border ${
-                  currentPage === 'live_interview'
-                    ? 'bg-orange-600 text-white border-orange-600 font-bold'
-                    : hasActiveSession
-                    ? 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
-                    : 'text-zinc-400 cursor-not-allowed opacity-50 border-transparent'
-                }`}
+                onClick={() => onNavigate('interviewer_studio')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-bold transition-colors border border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-800 ml-2"
               >
-                <Radio className="w-3.5 h-3.5 text-orange-600" />
-                <span>Interview Room</span>
-              </button>
-
-              <button
-                onClick={() => onNavigate('session_report')}
-                disabled={!hasActiveReport}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-colors border ${
-                  currentPage === 'session_report'
-                    ? 'bg-orange-600 text-white border-orange-600 font-bold'
-                    : hasActiveReport
-                    ? 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
-                    : 'text-zinc-400 cursor-not-allowed opacity-50 border-transparent'
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>My Report</span>
-              </button>
-
-              <button
-                onClick={() => onNavigate('progress')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-colors border ${
-                  currentPage === 'progress'
-                    ? 'bg-orange-600 text-white border-orange-600 font-bold'
-                    : 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
-                }`}
-              >
-                <TrendingUp className="w-3.5 h-3.5" />
-                <span>Progress</span>
+                <Users className="w-3.5 h-3.5 text-orange-600" />
+                <span>Interviewer Studio</span>
               </button>
             </>
           )}
 
           {activeRole === 'recruiter' && (
             <>
+              <button
+                onClick={() => onNavigate('interviewer_studio')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-colors border ${
+                  currentPage === 'interviewer_studio'
+                    ? 'bg-orange-600 text-white border-orange-600 font-bold'
+                    : 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
+                }`}
+              >
+                <Users className="w-3.5 h-3.5 text-orange-600" />
+                <span>Interviewer Studio</span>
+              </button>
+
               <button
                 onClick={() => onNavigate('recruiter')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-semibold transition-colors border ${
@@ -231,6 +198,14 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <BarChart3 className="w-3.5 h-3.5" />
                 <span>Recruiter Scorecard</span>
+              </button>
+
+              <button
+                onClick={() => onNavigate('dashboard')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-none text-xs font-bold transition-colors border border-stone-300 bg-stone-100 hover:bg-stone-200 text-stone-800 ml-2"
+              >
+                <GraduationCap className="w-3.5 h-3.5 text-orange-600" />
+                <span>Candidate Portal</span>
               </button>
             </>
           )}

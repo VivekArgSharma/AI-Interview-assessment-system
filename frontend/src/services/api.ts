@@ -762,5 +762,102 @@ export class ApiService {
     }
     return [];
   }
+
+  // ==================== Custom Interviews & Invite Links ====================
+
+  static async createCustomInterview(data: {
+    title: string;
+    track: 'tech' | 'sales' | string;
+    duration_minutes?: number;
+    questions: Array<{
+      stage: string;
+      question_text: string;
+      correct_answer: string;
+      key_concepts?: string[];
+    }>;
+  }): Promise<{
+    id: string;
+    role_id: string;
+    invite_code: string;
+    invite_url: string;
+    title: string;
+    track: string;
+    duration_minutes: number;
+    questions_count: number;
+    questions: any[];
+    created_at: string;
+  }> {
+    const res = await fetch(`${API_BASE_URL}/custom-interviews`, {
+      method: 'POST',
+      headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to create custom interview.');
+    }
+    return res.json();
+  }
+
+  static async getCustomInterviews(track?: string): Promise<any[]> {
+    try {
+      const query = track ? `?track=${track}` : '';
+      const res = await fetch(`${API_BASE_URL}/custom-interviews${query}`, {
+        headers: this.getHeaders(),
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn('Failed to load custom interviews:', e);
+    }
+    return [];
+  }
+
+  static async lookupInviteCode(code: string): Promise<{
+    valid: boolean;
+    invite_code: string;
+    role_id: string;
+    title: string;
+    track: string;
+    track_id: string;
+    duration_minutes: number;
+    questions_count: number;
+    stages: string[];
+  }> {
+    const res = await fetch(`${API_BASE_URL}/custom-interviews/by-code/${encodeURIComponent(code)}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Invite code '${code}' not found.`);
+    }
+    return res.json();
+  }
+
+  static async startCustomInterviewByInvite(data: {
+    invite_code: string;
+    candidate_name?: string;
+    candidate_email?: string;
+  }): Promise<any> {
+    const res = await fetch(`${API_BASE_URL}/custom-interviews/start`, {
+      method: 'POST',
+      headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to start interview by invite code.');
+    }
+    return res.json();
+  }
+
+  static async getCustomInterviewSubmissions(roleId: string): Promise<any> {
+    const res = await fetch(`${API_BASE_URL}/custom-interviews/${roleId}/submissions`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      throw new Error('Failed to load submissions.');
+    }
+    return res.json();
+  }
 }
 

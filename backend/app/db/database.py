@@ -5,7 +5,9 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 logger = logging.getLogger(__name__)
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./interview_app.db")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+canonical_db_path = os.path.join(BASE_DIR, "interview_app.db").replace("\\", "/")
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{canonical_db_path}")
 
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
@@ -100,6 +102,20 @@ def _auto_migrate_sqlite_columns():
             if "pitch_std_hz" not in cols:
                 conn.execute(text("ALTER TABLE audio_metrics ADD COLUMN pitch_std_hz FLOAT DEFAULT 24.0"))
             conn.commit()
+
+        # Check roles table
+        if inspector.has_table("roles"):
+            cols = {c["name"] for c in inspector.get_columns("roles")}
+            if "custom_questions" not in cols:
+                conn.execute(text("ALTER TABLE roles ADD COLUMN custom_questions TEXT DEFAULT '[]'"))
+                conn.commit()
+
+        # Check questions table
+        if inspector.has_table("questions"):
+            cols = {c["name"] for c in inspector.get_columns("questions")}
+            if "reference_answer" not in cols:
+                conn.execute(text("ALTER TABLE questions ADD COLUMN reference_answer TEXT"))
+                conn.commit()
 
         # Check reports table
         if inspector.has_table("reports"):

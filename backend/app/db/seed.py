@@ -414,6 +414,72 @@ def seed_default_data():
                 started_offset_hours=4.0
             )
 
+        # 7. Seed Pre-made Custom Interviews with Interviewer Questions & Model Answers
+        recruiter_user = db.query(User).filter(User.role == "recruiter").first()
+        _seed_premade_custom_interview(
+            db=db,
+            recruiter=recruiter_user,
+            role_id="custom-role-tech-demo",
+            title="Senior Cloud & Distributed Systems Assessment",
+            track="tech",
+            invite_code="TECH-101",
+            questions=[
+                {
+                    "sequence_number": 1,
+                    "stage": "Architecture & Idempotency",
+                    "question_text": "An API service starts returning duplicate records during network timeouts and retry storms. How do you isolate and resolve the root cause?",
+                    "correct_answer": "I isolate between the database and in-memory accumulator by inspecting telemetry logs. To prevent duplicate execution on retry storms, I enforce an idempotency key using Redis SETNX with TTL and ensure atomic deduplication.",
+                    "key_concepts": ["idempotency key", "Redis SETNX", "retry storms", "TTL", "atomic deduplication"]
+                },
+                {
+                    "sequence_number": 2,
+                    "stage": "Distributed Concurrency",
+                    "question_text": "How would you design a distributed locking mechanism to prevent two worker nodes from processing the same event?",
+                    "correct_answer": "I would use Redis Redlock or Postgres advisory locks with lease timeouts and fencing tokens to ensure only one worker processes an event, preventing stale node overrides.",
+                    "key_concepts": ["distributed lock", "fencing token", "lease timeout", "Redlock", "stale override"]
+                },
+                {
+                    "sequence_number": 3,
+                    "stage": "Rollout & Safeguards",
+                    "question_text": "What production rollback safeguards and telemetry alerts do you establish before deploying a distributed bug fix?",
+                    "correct_answer": "I employ canary deployment at 10% traffic, monitor p99 latency and 5xx error thresholds on Datadog, and configure automated circuit breaker rollbacks.",
+                    "key_concepts": ["canary deployment", "p99 latency", "circuit breaker", "automated rollback"]
+                }
+            ]
+        )
+
+        _seed_premade_custom_interview(
+            db=db,
+            recruiter=recruiter_user,
+            role_id="custom-role-sales-demo",
+            title="Enterprise SaaS Account Executive - Consultative Negotiation",
+            track="sales",
+            invite_code="SALES-202",
+            questions=[
+                {
+                    "sequence_number": 1,
+                    "stage": "Objection Handling & Pricing",
+                    "question_text": "A prospective enterprise buyer says your platform is 30% more expensive than their incumbent solution. How do you handle this objection?",
+                    "correct_answer": "I validate their budget boundaries without discounting prematurely, then re-anchor discovery on total cost of ownership and time savings, showing our automation saves 15 hours per engineering sprint.",
+                    "key_concepts": ["total cost of ownership", "value re-anchoring", "ROI", "no premature discount"]
+                },
+                {
+                    "sequence_number": 2,
+                    "stage": "Stakeholder Retraining Fear",
+                    "question_text": "An executive stakeholder is hesitant to switch because of the perceived pain of team retraining. How do you address their fear?",
+                    "correct_answer": "I validate their concern, quantify the weekly friction of their legacy tool, and offer a dedicated concierge migration and shadowing program with zero downtime guarantees.",
+                    "key_concepts": ["concierge onboarding", "zero downtime", "friction quantification", "migration support"]
+                },
+                {
+                    "sequence_number": 3,
+                    "stage": "Mutual Commitment Closing",
+                    "question_text": "How do you establish mutual commitment to secure a signed contract before quarter close?",
+                    "correct_answer": "I anchor the signing deadline directly to the customer's internal product launch milestone so any delay in signature directly impacts their own business deliverable.",
+                    "key_concepts": ["mutual action plan", "go-live milestone", "executive sponsor anchor", "business deliverable"]
+                }
+            ]
+        )
+
         db.commit()
         logger.info("Database successfully seeded with PRD users, roles, scenarios, and calibration fixtures.")
     except Exception as e:
@@ -421,6 +487,36 @@ def seed_default_data():
         logger.error(f"Error seeding database: {e}", exc_info=True)
     finally:
         db.close()
+
+
+def _seed_premade_custom_interview(db, recruiter, role_id: str, title: str, track: str, invite_code: str, questions: list):
+    """Seeds a pre-configured interviewer role with custom questions and model answers."""
+    existing = db.query(RoleModel).filter(RoleModel.id == role_id).first()
+    if existing:
+        return existing
+    
+    role = RoleModel(
+        id=role_id,
+        recruiter_id=recruiter.id if recruiter else None,
+        title=title,
+        jd_text=f"Benchmark custom {track} interview with model answers.",
+        scenario_type=track,
+        duration_minutes=15,
+        video_enabled=True,
+        custom_questions=questions
+    )
+    db.add(role)
+    db.flush()
+
+    inv = db.query(Invite).filter(Invite.token == invite_code).first()
+    if not inv:
+        inv = Invite(
+            role_id=role.id,
+            token=invite_code,
+            expires_at=datetime.utcnow() + timedelta(days=90)
+        )
+        db.add(inv)
+    return role
 
 
 def _seed_completed_5stage_interview(db, user, track_id: str, session_id: str, score: float, started_offset_hours: float):
