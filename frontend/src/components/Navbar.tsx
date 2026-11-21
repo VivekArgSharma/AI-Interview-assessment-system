@@ -115,17 +115,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           <nav className="flex items-center gap-1.5">
             <button
               onClick={() => onNavigate('my_interviews')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-none text-xs font-bold transition-all mr-2 ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-none text-xs font-semibold transition-colors border mr-2 ${
                 currentPage === 'my_interviews'
-                  ? 'bg-orange-600 text-white shadow-xs'
-                  : 'bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-300'
+                  ? 'bg-orange-600 text-white border-orange-600 font-bold'
+                  : 'text-zinc-700 hover:text-zinc-900 hover:bg-orange-50/60 border-transparent'
               }`}
             >
-              <GraduationCap className="w-3.5 h-3.5 text-orange-600" />
-              <span>Full Interview Demo</span>
-              <span className="text-[9px] px-1.5 py-0.2 rounded-none bg-orange-200 text-orange-950 font-extrabold uppercase">
-                Viva
-              </span>
+              <Award className="w-3.5 h-3.5 text-orange-600" />
+              <span>My Completed Interviews</span>
             </button>
 
             {activeRole === 'candidate' && (

@@ -19,7 +19,9 @@ from ..models.models import (
     Contest,
     Review,
     HumanRating,
-    AuditLog
+    AuditLog,
+    Assessment,
+    Recommendation
 )
 from ..core.security import get_password_hash
 
@@ -392,6 +394,26 @@ def seed_default_data():
             )
             db.add(audit)
 
+        # 6. Seed Complete 5-Stage Benchmark Interviews with Full Q&A & Exemplars for Candidates
+        candidate_users = db.query(User).filter(User.role == "candidate").all()
+        for cand in candidate_users:
+            _seed_completed_5stage_interview(
+                db=db,
+                user=cand,
+                track_id="bug_fixing",
+                session_id=f"benchmark-swe-{cand.id[:8]}",
+                score=88.0,
+                started_offset_hours=1.5
+            )
+            _seed_completed_5stage_interview(
+                db=db,
+                user=cand,
+                track_id="sales",
+                session_id=f"benchmark-sales-{cand.id[:8]}",
+                score=86.0,
+                started_offset_hours=4.0
+            )
+
         db.commit()
         logger.info("Database successfully seeded with PRD users, roles, scenarios, and calibration fixtures.")
     except Exception as e:
@@ -399,3 +421,233 @@ def seed_default_data():
         logger.error(f"Error seeding database: {e}", exc_info=True)
     finally:
         db.close()
+
+
+def _seed_completed_5stage_interview(db, user, track_id: str, session_id: str, score: float, started_offset_hours: float):
+    """Seeds an authentic, complete 5-stage benchmark interview with candidate speech, exemplar models, and audio metrics."""
+    existing = db.query(InterviewSession).filter(InterviewSession.id == session_id).first()
+    if existing:
+        return existing
+
+    track = db.query(InterviewTrack).filter(InterviewTrack.id == track_id).first()
+    if not track:
+        return None
+
+    rubric = db.query(Rubric).filter(Rubric.track_id == track.id).first()
+    criteria = rubric.criteria if rubric else []
+
+    now = datetime.utcnow()
+    start_time = now - timedelta(hours=started_offset_hours, minutes=18)
+    end_time = now - timedelta(hours=started_offset_hours)
+
+    session = InterviewSession(
+        id=session_id,
+        user_id=user.id,
+        track_id=track.id,
+        rubric_version_id=rubric.id if rubric else None,
+        difficulty="intermediate",
+        duration_minutes=18,
+        voice_preference="en-US-JennyNeural",
+        video_enabled=True,
+        status="completed",
+        current_stage="Post-Mortem & Rollout" if track_id == "bug_fixing" else "Mutual Commitment Closing",
+        current_stage_index=4,
+        started_at=start_time,
+        completed_at=end_time,
+        candidate_consent={"audio": True, "video": True, "retention_ttl_hours": 24}
+    )
+    db.add(session)
+    db.flush()
+
+    if track_id == "bug_fixing":
+        scenarios = [
+            {
+                "stage": "Defect Origin Triage",
+                "question": "An API service started returning duplicate records after a deployment under retry storms. How do you isolate the root cause?",
+                "transcript": "When reproduction is intermittent under retry storms, I check distributed traces and server logs, then check whether duplicate rows exist in the database or only in the in-memory accumulator.",
+                "duration": 37.0,
+                "wpm": 140.0,
+                "score": 4.2,
+            },
+            {
+                "stage": "Root Cause Hypothesis",
+                "question": "Looking at the worker code, the accumulator dictionary does not reset on network timeout retry. How do you refactor for idempotency?",
+                "transcript": "I would enforce an idempotency key using Redis SETNX and ensure the accumulator set deduplicates record IDs so duplicate retry storms don't increment counts twice.",
+                "duration": 39.0,
+                "wpm": 144.0,
+                "score": 4.4,
+            },
+            {
+                "stage": "Automated Sandbox Testing",
+                "question": "How do you construct a regression test to prove the retry storm no longer causes duplicate entries?",
+                "transcript": "I write an automated unit test mocking the HTTP post with ConnectionError on the first two attempts and success on the third, asserting that the output set count equals exactly the input length.",
+                "duration": 42.0,
+                "wpm": 138.0,
+                "score": 4.6,
+            },
+            {
+                "stage": "Incident Trade-off Decision",
+                "question": "Your tech lead suggests increasing timeout limits instead of adding idempotency deduplication. How do you respond?",
+                "transcript": "I explain that extending timeouts ties up connection pool threads and doesn't solve network partitions. An idempotency key guarantees correctness regardless of network instability.",
+                "duration": 35.0,
+                "wpm": 141.0,
+                "score": 4.3,
+            },
+            {
+                "stage": "Post-Mortem & Rollout",
+                "question": "Summarize the production rollout and monitoring safeguards you establish before merging this fix.",
+                "transcript": "I deploy via canary at 10% traffic, monitor p99 latency and 5xx retry rates on Datadog dashboards, and set an automated circuit breaker alert.",
+                "duration": 33.0,
+                "wpm": 139.0,
+                "score": 4.5,
+            }
+        ]
+        summary_text = "Candidate completed all 5 stages of the Software Engineering Bug-Fixing scenario with disciplined technical reasoning, clear concurrency trade-offs, and calibrated delivery pacing (~140 WPM)."
+        strengths = [
+            "Structured response progression following the STAR architectural model",
+            "Clear articulation of competing trade-offs under high-concurrency failure conditions",
+            "Consistent vocal cadence within the optimal 135-145 WPM band"
+        ]
+    else:
+        scenarios = [
+            {
+                "stage": "Discovery & Stakeholder Probing",
+                "question": "A prospective enterprise buyer mentions their current analytics tool is clunky but fears switching due to team retraining. How do you approach discovery?",
+                "transcript": "I would first validate their retraining concern and ask how many weekly hours their team currently loses to that clunky workflow.",
+                "duration": 34.0,
+                "wpm": 136.0,
+                "score": 4.1,
+            },
+            {
+                "stage": "Value Proposition Alignment",
+                "question": "The prospect asks why your platform is worth 30% more than their existing provider. How do you frame the value?",
+                "transcript": "I lead with total cost of ownership. Our automated pipeline saves roughly 15 engineering hours per sprint per squad, which pays back the difference in under 90 days.",
+                "duration": 38.0,
+                "wpm": 142.0,
+                "score": 4.5,
+            },
+            {
+                "stage": "Objection Handling & Pricing",
+                "question": "You are speaking with a prospective client who says your SaaS product looks great but is 25% over their budget. How would you handle this?",
+                "transcript": "We can't just give an immediate discount because that devalues the software. Instead, I explore phased rollout or quarterly prepayment to align with their cash flow.",
+                "duration": 36.0,
+                "wpm": 138.0,
+                "score": 4.3,
+            },
+            {
+                "stage": "Stakeholder De-escalation",
+                "question": "A key client is furious that a scheduled onboarding milestone was delayed by two days. How do you de-escalate?",
+                "transcript": "I apologize immediately and sincerely without making excuses or blaming engineering, take personal responsibility, and provide a clear hourly roadmap for the remaining steps.",
+                "duration": 40.0,
+                "wpm": 144.0,
+                "score": 4.4,
+            },
+            {
+                "stage": "Mutual Commitment Closing",
+                "question": "How do you secure mutual commitment from the executive sponsor to sign before the end of the quarter?",
+                "transcript": "I anchor their sign-off deadline directly to their internal Q3 go-live milestone so any delay in signature directly jeopardizes their own business deliverable.",
+                "duration": 32.0,
+                "wpm": 140.0,
+                "score": 4.3,
+            }
+        ]
+        summary_text = "Candidate demonstrated exceptional consultative discovery, strategic objection re-framing, and consultative executive closing across all 5 evaluation stages."
+        strengths = [
+            "Demonstrated empathy and value re-anchoring on pricing objections",
+            "Clear ROI articulation tied to customer engineering velocity",
+            "Natural conversational cadence and confident closing posture"
+        ]
+
+    for idx, scen in enumerate(scenarios):
+        q = Question(
+            session_id=session.id,
+            question_text=scen["question"],
+            question_type="initial",
+            sequence_number=idx + 1,
+            interview_stage=scen["stage"],
+            expected_concepts=["idempotency", "trade-offs", "monitoring"] if track_id == "bug_fixing" else ["value", "discovery", "roi"]
+        )
+        db.add(q)
+        db.flush()
+
+        ans = Answer(
+            session_id=session.id,
+            question_id=q.id,
+            transcript=scen["transcript"],
+            audio_duration_seconds=scen["duration"],
+            audio_storage_key=f"benchmark_audio_{track_id}_{idx + 1}"
+        )
+        db.add(ans)
+        db.flush()
+
+        metric = AudioMetric(
+            answer_id=ans.id,
+            speech_duration_seconds=scen["duration"],
+            speaking_rate=scen["wpm"],
+            articulation_rate=scen["wpm"] + 10.0,
+            pause_count=3,
+            total_pause_duration_seconds=2.4,
+            filler_count=1,
+            pitch_mean_hz=142.0,
+            pitch_std_hz=22.0,
+            audio_quality_status="good"
+        )
+        db.add(metric)
+
+        for c in criteria[:2]:
+            ass = Assessment(
+                answer_id=ans.id,
+                criterion_id=c.id,
+                score=scen["score"],
+                evidence="Candidate articulated key mechanism and trade-off considerations.",
+                rationale="Systematic answer demonstrating solid technical and delivery competencies."
+            )
+            db.add(ass)
+
+    rep = Report(
+        session_id=session.id,
+        content_score=score,
+        overall_score=round(score / 20.0, 1),
+        overall_ci_low=round((score / 20.0) - 0.3, 1),
+        overall_ci_high=round((score / 20.0) + 0.3, 1),
+        summary=summary_text,
+        delivery_summary={
+            "average_wpm": 140.0,
+            "average_articulation_rate": 150.0,
+            "total_pause_count": 16,
+            "total_filler_words": 2,
+            "has_audio": True
+        },
+        strengths=strengths,
+        improvement_areas=[
+            {
+                "dimension": "Incident Pacing & Pauses",
+                "issue": "Minor rushed phrasing when transitioning between technical sections.",
+                "drill": "Practice deliberate 0.5-second pauses before articulating second-stage trade-offs."
+            }
+        ],
+        score_configuration={
+            "criteria_breakdown": [
+                {
+                    "criterion_id": c.id,
+                    "criterion_key": c.criterion_key,
+                    "criterion_name": c.criterion_name,
+                    "score": round(score / 20.0, 1),
+                    "maximum_score": 5,
+                    "weight": c.weight,
+                    "evidence": "Candidate explicitly addressed core mechanisms and trade-offs.",
+                    "rationale": "High quality answer aligning with senior industry benchmarks."
+                }
+                for c in criteria
+            ]
+        }
+    )
+    db.add(rep)
+
+    rec1 = Recommendation(
+        session_id=session.id,
+        recommendation_text="Drill verbalizing quantitative failure bounds before jumping into code fixes.",
+        priority="high"
+    )
+    db.add(rec1)
+    return session

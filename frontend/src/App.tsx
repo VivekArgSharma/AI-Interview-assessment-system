@@ -295,7 +295,6 @@ export const App: React.FC = () => {
             {/* Gateway Portal & Dummy Login Page */}
             {currentPage === 'portal_login' && (
               <PortalLoginPage
-                onOpenExaminerDemo={() => setCurrentPage('my_interviews')}
                 onLoginSuccess={(user, role) => {
                   setCurrentUser(user);
                   setActiveRole(role);

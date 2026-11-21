@@ -125,37 +125,6 @@ export const PortalLoginPage: React.FC<PortalLoginPageProps> = ({ onLoginSuccess
         </div>
       )}
 
-      {/* Quick Examiner Viva Showcase Gateway */}
-      {onOpenExaminerDemo && (
-        <div className="max-w-5xl mx-auto w-full bg-stone-900 border border-orange-500/40 rounded-none p-6 sm:p-8 shadow-md text-white flex flex-col lg:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-5">
-            <div className="w-14 h-14 rounded-none bg-orange-600/20 border border-orange-500/40 text-orange-400 flex items-center justify-center shrink-0">
-              <GraduationCap className="w-7 h-7" />
-            </div>
-            <div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
-                  For Evaluators, Professors & Invigilators:
-                </span>
-                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-none bg-orange-500/20 text-orange-300 border border-orange-400/40 uppercase">
-                  Viva Mode
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-stone-300 mt-1 leading-relaxed">
-                Inspect side-by-side flawed vs exemplar candidate answers, live audio playback in realistic AI voice, and test your mic live in 60 seconds without login.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onOpenExaminerDemo}
-            className="px-6 py-3.5 rounded-none bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs uppercase tracking-wider shadow-xs transition-all shrink-0 flex items-center gap-2"
-          >
-            <span>Launch Examiner Demo</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
       {/* Two Differentiated Portal Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto w-full">
         {/* =========================================================================

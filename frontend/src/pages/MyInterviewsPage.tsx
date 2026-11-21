@@ -1,27 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Briefcase,
-  Play,
-  RotateCcw,
-  Sparkles,
   Award,
   Clock,
-  Layers,
   ArrowRight,
   CheckCircle2,
-  Volume2,
   Mic,
   FileText,
-  AlertCircle,
   Loader2,
-  Calendar,
-  Zap,
-  TrendingUp,
-  Radio
+  Calendar
 } from 'lucide-react';
 import { SessionHistoryItem } from '../types';
 import { ApiService } from '../services/api';
-import { voiceEngine } from '../services/voiceEngine';
 
 interface MyInterviewsPageProps {
   onStartNewPractice: () => void;
@@ -34,9 +23,6 @@ export const MyInterviewsPage: React.FC<MyInterviewsPageProps> = ({
 }) => {
   const [history, setHistory] = useState<SessionHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isGeneratingDemo, setIsGeneratingDemo] = useState<boolean>(false);
-  const [demoTrack, setDemoTrack] = useState<string>('bug_fixing');
-  const [successBanner, setSuccessBanner] = useState<string | null>(null);
 
   useEffect(() => {
     loadSessions();
@@ -51,27 +37,6 @@ export const MyInterviewsPage: React.FC<MyInterviewsPageProps> = ({
       console.error('Failed to load interview history:', err);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleGenerateDemoSession = async () => {
-    setIsGeneratingDemo(true);
-    setSuccessBanner(null);
-    try {
-      const res = await ApiService.generateDemoFullInterview(demoTrack);
-      setSuccessBanner(
-        `Full 5-stage completed ${res.track_name} interview generated with ${res.overall_score}/5.0 score! Opening your report...`
-      );
-      await loadSessions();
-      setTimeout(() => {
-        onViewReportById(res.session_id);
-      }, 1200);
-    } catch (err: any) {
-      console.error('Failed to generate full demo interview:', err);
-      // Fallback: reload history
-      await loadSessions();
-    } finally {
-      setIsGeneratingDemo(false);
     }
   };
 
@@ -108,61 +73,6 @@ export const MyInterviewsPage: React.FC<MyInterviewsPageProps> = ({
         </div>
       </div>
 
-      {/* Success Notification */}
-      {successBanner && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-none text-xs flex items-center gap-3 animate-in fade-in">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <span className="font-semibold">{successBanner}</span>
-        </div>
-      )}
-
-      {/* Instant 1-Click Examiner Demo Generator Box */}
-      <div className="bg-stone-900 text-white rounded-none p-6 sm:p-8 border border-orange-500/30 shadow-md flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div className="space-y-2 max-w-3xl">
-          <div className="flex items-center gap-2.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-none bg-orange-500/20 text-orange-300 border border-orange-400/30 font-mono">
-              Invigilator / Examiner 1-Click Walkthrough
-            </span>
-            <span className="text-xs text-stone-400">Skip 20-min speaking session</span>
-          </div>
-          <h3 className="text-base font-bold text-white">
-            Need to demonstrate the full candidate interview immediately?
-          </h3>
-          <p className="text-xs text-stone-300 leading-relaxed">
-            Generate an entire completed 5-stage interview session populated with candidate transcripts, audio metrics, rubric evaluations, and side-by-side exemplar answers with human voice playback in 1 click.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
-          <select
-            value={demoTrack}
-            onChange={(e) => setDemoTrack(e.target.value)}
-            className="bg-stone-800 border border-stone-700 text-white text-xs px-3.5 py-2.5 rounded-none outline-none focus:border-orange-500 font-semibold"
-          >
-            <option value="bug_fixing">Software Engineering (Bug-Fixing)</option>
-            <option value="sales">Sales & Consultative Negotiation</option>
-          </select>
-
-          <button
-            onClick={handleGenerateDemoSession}
-            disabled={isGeneratingDemo}
-            className="px-6 py-2.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold uppercase tracking-wider rounded-none shadow-xs transition-colors flex items-center gap-2 disabled:opacity-50"
-          >
-            {isGeneratingDemo ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Simulating 5 Stages...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                <span>Generate & Open Full Interview</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
       {/* Completed Interviews List */}
       <div className="space-y-6">
         <div className="flex items-center justify-between pb-3 border-b border-stone-200">
@@ -188,15 +98,9 @@ export const MyInterviewsPage: React.FC<MyInterviewsPageProps> = ({
             </div>
             <h3 className="text-sm font-bold text-stone-900 uppercase tracking-wider">No Interviews Recorded Yet</h3>
             <p className="text-xs text-stone-500 max-w-md mx-auto">
-              You haven't completed an interview session yet. Start a live interview or generate a sample completed interview above to review your answers.
+              You haven't completed an interview session yet. Start a live interview to practice and receive question-by-question exemplar comparisons and voice coaching.
             </p>
             <div className="flex justify-center gap-3 pt-2">
-              <button
-                onClick={handleGenerateDemoSession}
-                className="px-5 py-2.5 bg-orange-50 border border-orange-200 text-orange-700 hover:bg-orange-100 rounded-none text-xs font-bold uppercase tracking-wider"
-              >
-                Generate Sample Interview
-              </button>
               <button
                 onClick={onStartNewPractice}
                 className="px-5 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-none text-xs font-bold uppercase tracking-wider"
