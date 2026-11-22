@@ -143,6 +143,8 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
   const recordTimerRef = useRef<any>(null);
   const sessionTimerRef = useRef<any>(null);
   const speechRecogRef = useRef<any>(null);
+  const speakingQuestionIdRef = useRef<string | null>(null);
+  const isRecordingRef = useRef<boolean>(false);
 
   // Subscribe to voiceEngine speaking state
   useEffect(() => {
@@ -269,49 +271,34 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
     };
   }, [isPaused]);
 
-  // Update state whenever current question changes
-  useEffect(() => {
-    if (currentQuestion) {
-      if (currentQuestion.question_text) {
-        speakQuestionText(currentQuestion.question_text);
-      }
-      const isCoding = Boolean(
-        currentQuestion.coding_metadata?.is_coding ||
-        currentQuestion.coding_metadata?.question_type === 'coding_bug_fix' ||
-        currentQuestion.coding_metadata?.question_type === 'coding_leetcode'
-      );
-      if (isCoding) {
-        setActiveWorkbenchTab('cpp_editor');
-        if (currentQuestion.coding_metadata?.starter_code) {
-          setCppCode(currentQuestion.coding_metadata.starter_code);
-        }
-      } else {
-        setActiveWorkbenchTab('voice');
-      }
-      setCppExecutionResult(null);
-      setSelectedTestCaseIdx(0);
-    }
-  }, [currentQuestion?.id]);
-
-  const speakQuestionText = (text: string) => {
-    voiceEngine.speak(text, {
-      voice: voicePreference,
-      onStart: () => setIsSpeakingQuestion(true),
-      onEnd: () => setIsSpeakingQuestion(false),
-      onError: () => setIsSpeakingQuestion(false),
-    });
-  };
-
   const stopSpeaking = () => {
     voiceEngine.stop();
     setIsSpeakingQuestion(false);
   };
 
+  const handleStopRecording = () => {
+    isRecordingRef.current = false;
+    if (recordTimerRef.current) {
+      clearInterval(recordTimerRef.current);
+      recordTimerRef.current = null;
+    }
+    if (speechRecogRef.current) {
+      try { speechRecogRef.current.stop(); } catch {}
+      speechRecogRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try { mediaRecorderRef.current.stop(); } catch {}
+    }
+    setIsRecording(false);
+  };
+
   const handleStartRecording = async () => {
+    if (isRecordingRef.current) return;
     setErrorMessage(null);
     stopSpeaking();
     setTranscript('');
     audioChunksRef.current = [];
+    isRecordingRef.current = true;
 
     // Optional client live speech recognition preview
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -371,24 +358,53 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
       setRecordDuration(0);
       recordTimerRef.current = setInterval(() => setRecordDuration((prev) => prev + 1), 1000);
     } catch {
+      isRecordingRef.current = false;
       setErrorMessage('Could not access microphone. Ensure permissions are granted in browser.');
     }
   };
 
-  const handleStopRecording = () => {
-    if (recordTimerRef.current) {
-      clearInterval(recordTimerRef.current);
-      recordTimerRef.current = null;
-    }
-    if (speechRecogRef.current) {
-      try { speechRecogRef.current.stop(); } catch {}
-      speechRecogRef.current = null;
-    }
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
+  const speakQuestionText = (text: string) => {
+    handleStopRecording();
+    voiceEngine.speak(text, {
+      voice: voicePreference,
+      onStart: () => setIsSpeakingQuestion(true),
+      onEnd: () => {
+        setIsSpeakingQuestion(false);
+        // Automatically start recording candidate answer as soon as interviewer finishes question!
+        setTimeout(() => {
+          handleStartRecording();
+        }, 350);
+      },
+      onError: () => setIsSpeakingQuestion(false),
+    });
   };
+
+  // Update state whenever current question changes
+  useEffect(() => {
+    if (currentQuestion && currentQuestion.id) {
+      if (speakingQuestionIdRef.current !== currentQuestion.id) {
+        speakingQuestionIdRef.current = currentQuestion.id;
+        if (currentQuestion.question_text) {
+          speakQuestionText(currentQuestion.question_text);
+        }
+      }
+      const isCoding = Boolean(
+        currentQuestion.coding_metadata?.is_coding ||
+        currentQuestion.coding_metadata?.question_type === 'coding_bug_fix' ||
+        currentQuestion.coding_metadata?.question_type === 'coding_leetcode'
+      );
+      if (isCoding) {
+        setActiveWorkbenchTab('cpp_editor');
+        if (currentQuestion.coding_metadata?.starter_code) {
+          setCppCode(currentQuestion.coding_metadata.starter_code);
+        }
+      } else {
+        setActiveWorkbenchTab('voice');
+      }
+      setCppExecutionResult(null);
+      setSelectedTestCaseIdx(0);
+    }
+  }, [currentQuestion?.id]);
 
   const transcribeRecordedAudio = async (blob: Blob) => {
     setIsTranscribing(true);
@@ -464,14 +480,12 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
         setTranscript('');
         setRecordedAudioBlob(null);
         setRecordDuration(0);
-        speakQuestionText(resp.follow_up_question.question_text);
       } else if (resp.next_question) {
         setLatestFollowUpMessage(null);
         setCurrentQuestion(resp.next_question);
         setTranscript('');
         setRecordedAudioBlob(null);
         setRecordDuration(0);
-        speakQuestionText(resp.next_question.question_text);
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Failed to submit response. Please retry.');
@@ -540,7 +554,6 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
         setTranscript('');
         setRecordedAudioBlob(null);
         setRecordDuration(0);
-        speakQuestionText(resp.next_question.question_text);
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Failed to submit C++ solution.');
@@ -1263,7 +1276,11 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
                   <p className="text-sm text-stone-800 leading-relaxed whitespace-pre-wrap">
                     {transcript || (
                       <span className="text-stone-400 italic">
-                        Click "Start Speaking" or type your spoken response. Real-time Whisper streaming will transcribe your audio.
+                        {isSpeakingQuestion
+                          ? 'AI Interviewer is speaking... Your microphone will automatically turn on as soon as the question finishes.'
+                          : isRecording
+                          ? '🎙️ Microphone is active and recording! Speak your answer now (transcribing live)...'
+                          : 'Microphone ready. Start speaking your answer or type response.'}
                       </span>
                     )}
                   </p>

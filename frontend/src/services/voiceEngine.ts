@@ -115,33 +115,39 @@ class VoiceEngine {
 
     const chosenVoice = options?.voice || this.selectedVoiceId;
 
-    // Strategy 1: High-Definition Neural Speech via Backend
+    // Strategy 1: High-Definition Realistic Human Neural Voice via Backend edge-tts
     try {
       const audioUrl = ApiService.getVoiceAudioUrl(cleanText, chosenVoice, options?.rate || '+0%');
       const audio = new Audio();
       this.currentAudio = audio;
 
       audio.onplay = () => {
+        if (this.currentAudio !== audio) return;
         this.setSpeaking(true);
         options?.onStart?.();
       };
 
       audio.onended = () => {
+        if (this.currentAudio !== audio) return;
         this.setSpeaking(false);
         this.currentAudio = null;
         options?.onEnd?.();
       };
 
-      audio.onerror = () => {
-        console.warn('Backend neural audio stream failed, falling back to browser SpeechSynthesis.');
+      audio.onerror = (e) => {
+        // If audio was stopped or superseded, DO NOT trigger fallback!
+        if (this.currentAudio !== audio) return;
+        console.warn('Backend neural audio stream failed, falling back to browser SpeechSynthesis:', e);
         this.currentAudio = null;
         this.speakBrowserFallback(cleanText, options);
       };
 
       audio.src = audioUrl;
       await audio.play();
-    } catch (e) {
+    } catch (e: any) {
+      if (!this.currentAudio) return; // Already stopped
       console.warn('Backend neural audio play error:', e);
+      this.currentAudio = null;
       this.speakBrowserFallback(cleanText, options);
     }
   }
@@ -209,15 +215,22 @@ class VoiceEngine {
    */
   stop() {
     if (this.currentAudio) {
-      try {
-        this.currentAudio.pause();
-        this.currentAudio.currentTime = 0;
-      } catch {}
+      const a = this.currentAudio;
       this.currentAudio = null;
+      a.onplay = null;
+      a.onended = null;
+      a.onerror = null;
+      try {
+        a.pause();
+        a.currentTime = 0;
+        a.src = '';
+      } catch {}
     }
 
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
     }
     this.currentUtterance = null;
 

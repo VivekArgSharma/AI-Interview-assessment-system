@@ -83,6 +83,9 @@ class VoiceSynthesizer:
             return ""
         
         t = text.strip()
+        # Remove code blocks so they are not read aloud phonetically
+        import re
+        t = re.sub(r"```[\s\S]*?```", " [The code for this problem is displayed on your screen.] ", t)
         # Remove bold/italic markdown
         t = t.replace("**", "").replace("*", "")
         t = t.replace("`", "")
