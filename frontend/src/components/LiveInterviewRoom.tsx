@@ -42,7 +42,6 @@ import { ApiService } from '../services/api';
 import { convertBlobToWav, getStudioMicrophoneStream } from '../utils/audio';
 import { voiceEngine, DEFAULT_VOICES } from '../services/voiceEngine';
 import { AudioVisualizer } from './AudioVisualizer';
-import { InterviewerAvatar } from './InterviewerAvatar';
 
 interface LiveInterviewRoomProps {
   session: InterviewSessionData;
@@ -768,91 +767,25 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
 
       {/* Main Grid: Interviewer + Console / Scenario Workbench */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Column: AI Interviewer & Camera Preview */}
+        {/* Left Column: Candidate Live Video Tracking & AI Interviewer Prompt */}
         <div className={`${isCodingQuestion ? 'lg:col-span-4' : 'lg:col-span-5'} space-y-6`}>
-          {/* AI Realistic 2D Lip-Syncing Avatar */}
-          <InterviewerAvatar
-            voicePreference={voicePreference}
-            isSpeaking={isSpeakingQuestion}
-            isListening={isRecording}
-            questionText={currentQuestion?.question_text}
-            onBargeIn={stopSpeaking}
-            onReplayVoice={() => currentQuestion && speakQuestionText(currentQuestion.question_text)}
-          />
-
-          {/* Question Text & Voice Settings Card */}
-          <div className="bg-white border border-stone-200 rounded-none p-5 shadow-xs">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Bot className="w-4 h-4 text-orange-600" />
-                <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">Current Question Prompt</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <select
-                  value={voicePreference}
-                  onChange={(e) => {
-                    setVoicePreference(e.target.value);
-                    voiceEngine.setSelectedVoice(e.target.value);
-                  }}
-                  className="bg-stone-50 border border-stone-200 text-xs font-medium text-stone-700 rounded-none px-2 py-1 outline-none focus:border-orange-500"
-                  title="Choose AI Interviewer Persona & Voice"
-                >
-                  {DEFAULT_VOICES.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="p-4 bg-stone-50 border border-stone-200 rounded-none mb-4 relative min-h-[110px] max-h-[300px] overflow-y-auto flex items-start">
-              <p className="text-sm sm:text-base font-semibold text-stone-900 leading-relaxed font-sans whitespace-pre-wrap">
-                "{currentQuestion?.question_text || 'Preparing question...'}"
-              </p>
-            </div>
-
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => currentQuestion && speakQuestionText(currentQuestion.question_text)}
-                  disabled={isSpeakingQuestion}
-                  className="flex items-center gap-2 px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold uppercase tracking-wider rounded-none transition-colors disabled:opacity-50"
-                >
-                  <Volume2 className="w-4 h-4 text-orange-600" />
-                  <span>Repeat Question</span>
-                </button>
-              </div>
-
-              {isSpeakingQuestion && (
-                <button
-                  onClick={stopSpeaking}
-                  className="px-3 py-1.5 text-xs text-rose-600 hover:text-rose-700 font-bold uppercase tracking-wider flex items-center gap-1 rounded-none border border-rose-200 bg-rose-50"
-                >
-                  <VolumeX className="w-3.5 h-3.5" />
-                  <span>Barge-in / Stop Voice</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Camera Preview Card with Real-Time Computer Vision & Eye Contact Tracking */}
+          {/* Candidate Live Camera & Eye-Contact Tracking Feed */}
           <div className="bg-white border border-stone-200 rounded-none p-5 shadow-xs">
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold text-stone-800 uppercase tracking-wider flex items-center gap-2">
                 <Video className="w-4 h-4 text-orange-600" />
-                Live Video & Eye Contact Tracking
+                Live Candidate Camera & Visual Tracking
               </span>
               <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-none border ${
                 videoEnabled 
                   ? 'bg-orange-50 text-orange-700 border-orange-200' 
                   : 'bg-stone-100 text-stone-400 border-stone-200'
               }`}>
-                {videoEnabled ? '15% Score Weight' : 'Privacy Mode (0%)'}
+                {videoEnabled ? 'Active (15% Weight)' : 'Privacy Mode (0%)'}
               </span>
             </div>
 
-            <div className="h-56 bg-stone-900 rounded-none border border-stone-200 overflow-hidden relative flex items-center justify-center">
+            <div className="h-64 sm:h-72 bg-stone-900 rounded-none border border-stone-200 overflow-hidden relative flex items-center justify-center">
               {videoEnabled ? (
                 <>
                   <video
@@ -935,9 +868,77 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
             {videoEnabled && (
               <p className="text-[10px] text-stone-500 mt-2 font-mono flex items-center gap-1.5">
                 <span className="text-orange-600 font-bold">Coach Tip:</span>
-                Keep your gaze aligned with your webcam to maximize engagement score.
+                Look directly at your webcam to maintain high eye contact and engagement scores.
               </p>
             )}
+          </div>
+
+          {/* AI Interviewer Question Prompt & Audio Controls */}
+          <div className="bg-white border border-stone-200 rounded-none p-5 shadow-xs">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Bot className="w-4 h-4 text-orange-600" />
+                <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">AI Interviewer Prompt</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {isSpeakingQuestion ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider bg-orange-50 text-orange-700 rounded-none border border-orange-200">
+                    <span className="w-2 h-2 rounded-full bg-orange-600 animate-ping" />
+                    Speaking...
+                  </span>
+                ) : isRecording ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 rounded-none border border-emerald-200">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                    Listening
+                  </span>
+                ) : null}
+
+                <select
+                  value={voicePreference}
+                  onChange={(e) => {
+                    setVoicePreference(e.target.value);
+                    voiceEngine.setSelectedVoice(e.target.value);
+                  }}
+                  className="bg-stone-50 border border-stone-200 text-xs font-medium text-stone-700 rounded-none px-2 py-1 outline-none focus:border-orange-500"
+                  title="Choose AI Interviewer Persona & Voice"
+                >
+                  {DEFAULT_VOICES.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="p-4 bg-stone-50 border border-stone-200 rounded-none mb-4 relative min-h-[110px] max-h-[300px] overflow-y-auto flex items-start">
+              <p className="text-sm sm:text-base font-semibold text-stone-900 leading-relaxed font-sans whitespace-pre-wrap">
+                "{currentQuestion?.question_text || 'Preparing question...'}"
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => currentQuestion && speakQuestionText(currentQuestion.question_text)}
+                  disabled={isSpeakingQuestion}
+                  className="flex items-center gap-2 px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold uppercase tracking-wider rounded-none transition-colors disabled:opacity-50"
+                >
+                  <Volume2 className="w-4 h-4 text-orange-600" />
+                  <span>Repeat Question</span>
+                </button>
+              </div>
+
+              {isSpeakingQuestion && (
+                <button
+                  onClick={stopSpeaking}
+                  className="px-3 py-1.5 text-xs text-rose-600 hover:text-rose-700 font-bold uppercase tracking-wider flex items-center gap-1 rounded-none border border-rose-200 bg-rose-50"
+                >
+                  <VolumeX className="w-3.5 h-3.5" />
+                  <span>Barge-in / Stop Voice</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
