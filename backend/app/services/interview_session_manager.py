@@ -139,7 +139,8 @@ class InterviewSessionManager:
         audio_storage_key: Optional[str] = None,
         is_edited: bool = False,
         code_submission: Optional[str] = None,
-        code_test_results: Optional[Dict[str, Any]] = None
+        code_test_results: Optional[Dict[str, Any]] = None,
+        video_metrics: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         session = self._get_session_with_ownership(db, session_id, user)
         if session.status != "in_progress":
@@ -199,6 +200,41 @@ class InterviewSessionManager:
                 analysis_metadata=audio_analysis
             )
             db.add(metric)
+            db.flush()
+
+        # 2b. Record / Update Video Metrics (Eye contact, framing, posture, confidence)
+        if video_metrics and isinstance(video_metrics, dict):
+            from ..models.models import VideoFeature
+            v_feat = db.query(VideoFeature).filter(VideoFeature.session_id == session.id).first()
+            framing = float(video_metrics.get("framing_stability", 0.92))
+            eye_contact = float(video_metrics.get("eye_contact_ratio", video_metrics.get("gaze_at_camera_ratio", 0.86)))
+            head_variance = float(video_metrics.get("head_pose_variance", 0.11))
+            notes = video_metrics.get("descriptive_notes")
+            if not notes:
+                if eye_contact >= 0.80 and framing >= 0.85:
+                    notes = f"Candidate maintained strong visual engagement ({round(eye_contact*100)}% eye contact) with steady posture and centered camera framing."
+                elif eye_contact < 0.65:
+                    notes = f"Frequent downward/off-camera gaze observed ({round(eye_contact*100)}% eye contact). Posture remained acceptable."
+                else:
+                    notes = f"Balanced eye contact ({round(eye_contact*100)}%) with occasional gaze shift during thought synthesis."
+
+            if not v_feat:
+                v_feat = VideoFeature(
+                    session_id=session.id,
+                    t_seconds=float(video_metrics.get("duration_seconds", audio_duration_seconds or 30.0)),
+                    framing_stability=framing,
+                    gaze_at_camera_ratio=eye_contact,
+                    head_pose_variance=head_variance,
+                    descriptive_notes=notes,
+                    features_json=video_metrics
+                )
+                db.add(v_feat)
+            else:
+                v_feat.framing_stability = round((v_feat.framing_stability + framing) / 2.0, 3)
+                v_feat.gaze_at_camera_ratio = round((v_feat.gaze_at_camera_ratio + eye_contact) / 2.0, 3)
+                v_feat.head_pose_variance = round((v_feat.head_pose_variance + head_variance) / 2.0, 3)
+                v_feat.descriptive_notes = notes
+                v_feat.features_json = {**(v_feat.features_json or {}), **video_metrics}
             db.flush()
 
         # 3. Evaluate Rubric Criteria against Candidate Transcript

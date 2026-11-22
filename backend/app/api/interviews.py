@@ -1,4 +1,5 @@
 import logging
+import json
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
 from fastapi.responses import FileResponse, Response
@@ -17,6 +18,7 @@ from ..models.models import (
     Report,
     Assessment,
     AudioMetric,
+    VideoFeature,
     Recommendation
 )
 from ..schemas.interview import (
@@ -280,7 +282,8 @@ def submit_answer_text(
         transcript=request.transcript,
         is_edited=request.is_edited,
         code_submission=request.code_submission,
-        code_test_results=request.code_test_results
+        code_test_results=request.code_test_results,
+        video_metrics=request.video_metrics
     )
     return AnswerResponse(
         answer_id=result["answer_id"],
@@ -301,6 +304,7 @@ async def submit_answer_audio(
     question_id: str = Form(...),
     file: UploadFile = File(...),
     edited_transcript: Optional[str] = Form(None),
+    video_metrics: Optional[str] = Form(None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -332,6 +336,14 @@ async def submit_answer_audio(
     # Save uploaded audio file locally
     storage_key = AudioStorageService.save_audio(f"ans_{session_id[:8]}_{question_id[:8]}", audio_bytes)
 
+    # Parse optional video metrics
+    v_dict = None
+    if video_metrics:
+        try:
+            v_dict = json.loads(video_metrics)
+        except Exception:
+            pass
+
     result = manager.submit_answer(
         db=db,
         session_id=session_id,
@@ -341,7 +353,8 @@ async def submit_answer_audio(
         audio_analysis=analysis.model_dump(),
         audio_duration_seconds=trans_res["duration_seconds"],
         audio_storage_key=storage_key,
-        is_edited=bool(edited_transcript)
+        is_edited=bool(edited_transcript),
+        video_metrics=v_dict
     )
 
     return AnswerResponse(
@@ -495,6 +508,8 @@ def get_session_report(
         summary=report.summary,
         content_score=report.content_score,
         delivery_summary=report.delivery_summary or {},
+        video_summary=report.video_summary or {},
+        modality_breakdown=report.modality_breakdown or {},
         overall_score=report.overall_score,
         strengths=report.strengths or [],
         improvement_areas=report.improvement_areas or [],
@@ -502,6 +517,42 @@ def get_session_report(
         qa_history=qa_history,
         recommendations=recommendations
     )
+
+# ----------------- Video Telemetry Endpoint -----------------
+
+@router.post("/interviews/{session_id}/video-telemetry")
+def record_video_telemetry(
+    session_id: str,
+    metrics: Dict[str, Any],
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    session = manager._get_session_with_ownership(db, session_id, user)
+    v_feat = db.query(VideoFeature).filter(VideoFeature.session_id == session.id).first()
+    framing = float(metrics.get("framing_stability", 0.92))
+    eye_contact = float(metrics.get("eye_contact_ratio", metrics.get("gaze_at_camera_ratio", 0.86)))
+    head_variance = float(metrics.get("head_pose_variance", 0.11))
+    notes = metrics.get("descriptive_notes")
+    if not v_feat:
+        v_feat = VideoFeature(
+            session_id=session.id,
+            t_seconds=float(metrics.get("duration_seconds", 30.0)),
+            framing_stability=framing,
+            gaze_at_camera_ratio=eye_contact,
+            head_pose_variance=head_variance,
+            descriptive_notes=notes or f"Eye contact maintained at {round(eye_contact*100)}%.",
+            features_json=metrics
+        )
+        db.add(v_feat)
+    else:
+        v_feat.framing_stability = round((v_feat.framing_stability + framing) / 2.0, 3)
+        v_feat.gaze_at_camera_ratio = round((v_feat.gaze_at_camera_ratio + eye_contact) / 2.0, 3)
+        v_feat.head_pose_variance = round((v_feat.head_pose_variance + head_variance) / 2.0, 3)
+        if notes:
+            v_feat.descriptive_notes = notes
+        v_feat.features_json = {**(v_feat.features_json or {}), **metrics}
+    db.commit()
+    return {"status": "recorded", "eye_contact_ratio": v_feat.gaze_at_camera_ratio}
 
 # ----------------- Realistic Neural Voice & TTS Endpoints -----------------
 

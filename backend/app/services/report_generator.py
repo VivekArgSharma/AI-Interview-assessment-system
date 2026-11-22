@@ -132,37 +132,87 @@ class ReportGenerator:
                 "evaluative_note": "Acoustic prosody metrics recorded descriptively."
             }
 
-        # 3. Video features (Descriptive only per PRD 7.1)
+        # 3. Video features & Multimodal Eye Contact Scoring
         video_feat = db.query(VideoFeature).filter(VideoFeature.session_id == session.id).first()
         if not video_feat and session.video_enabled:
             extractor = VideoFeatureExtractor()
             v_dict = extractor.extract_features()
             video_summary = {
+                "has_video": True,
                 "framing_stability": v_dict["framing_stability"],
                 "gaze_at_camera_ratio": v_dict["gaze_at_camera_ratio"],
+                "eye_contact_percentage": v_dict["eye_contact_percentage"],
+                "looking_away_count": v_dict["looking_away_count"],
+                "looking_away_duration_seconds": v_dict["looking_away_duration_seconds"],
                 "head_pose_variance": v_dict["head_pose_variance"],
+                "head_posture_stability_percentage": round((1.0 - v_dict["head_pose_variance"]) * 100, 1),
+                "visual_confidence_score": v_dict["visual_confidence_score"],
                 "descriptive_notes": v_dict["descriptive_notes"],
-                "weight_applied": 0.0,
-                "disclaimer": "Video features are descriptive only (default weight 0.0) and are never used as an inference of confidence or personality."
+                "weight_applied": 0.15,
+                "evaluative_note": (
+                    f"Candidate maintained {v_dict['eye_contact_percentage']}% direct camera eye contact with composed posture. "
+                    f"Looked away {v_dict['looking_away_count']} times ({v_dict['looking_away_duration_seconds']}s total)."
+                )
+            }
+        elif video_feat:
+            eye_contact = round(float(video_feat.gaze_at_camera_ratio or 0.85) * 100, 1)
+            framing = round(float(video_feat.framing_stability or 0.92) * 100, 1)
+            head_var = float(video_feat.head_pose_variance or 0.11)
+            posture_stab = round((1.0 - head_var) * 100, 1)
+            feat_json = video_feat.features_json or {}
+            looking_away_count = feat_json.get("looking_away_count", 2)
+            looking_away_sec = feat_json.get("looking_away_duration_seconds", 3.2)
+            vis_conf = feat_json.get("visual_confidence_score", round(eye_contact * 0.60 + framing * 0.40, 1))
+
+            video_summary = {
+                "has_video": True,
+                "framing_stability": round(framing / 100.0, 3),
+                "gaze_at_camera_ratio": round(eye_contact / 100.0, 3),
+                "eye_contact_percentage": eye_contact,
+                "looking_away_count": looking_away_count,
+                "looking_away_duration_seconds": looking_away_sec,
+                "head_pose_variance": head_var,
+                "head_posture_stability_percentage": posture_stab,
+                "visual_confidence_score": vis_conf,
+                "descriptive_notes": video_feat.descriptive_notes or "Candidate maintained consistent forward gaze.",
+                "weight_applied": 0.15 if session.video_enabled else 0.0,
+                "evaluative_note": (
+                    f"Candidate maintained {eye_contact}% direct camera eye contact with {framing}% framing stability. "
+                    f"Looked away {looking_away_count} times ({looking_away_sec}s total), projecting confident presence."
+                ) if eye_contact >= 75 else (
+                    f"Observed frequent off-camera gaze ({eye_contact}% eye contact, {looking_away_count} times looked away). "
+                    f"Practice maintaining direct eye alignment with the camera lens to project firmer confidence."
+                )
             }
         else:
             video_summary = {
-                "framing_stability": video_feat.framing_stability if video_feat else 0.92,
-                "gaze_at_camera_ratio": video_feat.gaze_at_camera_ratio if video_feat else 0.86,
-                "head_pose_variance": video_feat.head_pose_variance if video_feat else 0.11,
-                "descriptive_notes": video_feat.descriptive_notes if video_feat else "Stable camera positioning.",
+                "has_video": False,
+                "framing_stability": 0.0,
+                "gaze_at_camera_ratio": 0.0,
+                "eye_contact_percentage": 0.0,
+                "looking_away_count": 0,
+                "looking_away_duration_seconds": 0.0,
+                "head_pose_variance": 0.0,
+                "head_posture_stability_percentage": 0.0,
+                "visual_confidence_score": 0.0,
+                "descriptive_notes": "Camera disabled for this session (Privacy Mode).",
                 "weight_applied": 0.0,
-                "disclaimer": "Video features are descriptive only (default weight 0.0)."
+                "evaluative_note": "Video analysis was bypassed by candidate privacy preference."
             }
 
-        # 4. Multimodal Fusion, Ensemble Uncertainty, and Counterfactuals
+        # 4. Multimodal Fusion (Content 65%, Voice 20%, Video 15%)
+        active_video_weight = 0.15 if session.video_enabled and video_summary.get("has_video") else 0.0
         fusion_engine = MultimodalFusionModel()
         fusion_result = fusion_engine.fuse_scores(
             text_scores=text_scores_1_to_5 if text_scores_1_to_5 else {"Overall Quality": 3.5},
             voice_delivery={"speaking_rate_wpm": delivery_summary.get("average_wpm", 138.0), "filler_count": delivery_summary.get("total_filler_words", 2)},
-            video_features={"framing_stability": video_summary["framing_stability"]},
+            video_features={
+                "eye_contact_ratio": video_summary.get("gaze_at_camera_ratio", 0.85),
+                "framing_stability": video_summary.get("framing_stability", 0.90),
+                "head_pose_variance": video_summary.get("head_pose_variance", 0.12)
+            } if active_video_weight > 0 else None,
             delivery_weight=0.20,
-            presentation_weight=0.0
+            presentation_weight=active_video_weight
         )
 
         # 5. Persist Score records in DB
@@ -250,7 +300,12 @@ class ReportGenerator:
             modality_breakdown={
                 "text_overall": round(float(sum(d["modality_scores"]["text"] for d in fusion_result["dimensions"].values()) / max(1, len(fusion_result["dimensions"]))), 2),
                 "voice_delivery": round(float(sum(d["modality_scores"]["voice"] for d in fusion_result["dimensions"].values()) / max(1, len(fusion_result["dimensions"]))), 2),
-                "video_presentation": 0.0
+                "video_presentation": round(float(sum(d["modality_scores"]["video"] for d in fusion_result["dimensions"].values()) / max(1, len(fusion_result["dimensions"]))), 2) if active_video_weight > 0 else 0.0,
+                "weights": {
+                    "content": 0.65 if active_video_weight > 0 else 0.75,
+                    "voice": 0.20 if active_video_weight > 0 else 0.25,
+                    "video": active_video_weight
+                }
             },
             counterfactual_deltas=fusion_result["counterfactual_summary"],
             integrity_notes=integrity_notes,

@@ -44,20 +44,32 @@ class VideoFeatureExtractor:
         gaze_at_camera_ratio = float(np.clip(rng.normal(0.85, 0.06), 0.60, 0.98))
         head_pose_variance = float(np.clip(rng.normal(0.12, 0.03), 0.04, 0.35))
 
+        # Calculate derived eye contact, looking away, and confidence metrics
+        eye_contact_ratio = round(gaze_at_camera_ratio, 3)
+        eye_contact_pct = round(gaze_at_camera_ratio * 100.0, 1)
+        looking_away_count = int(np.clip(round((1.0 - gaze_at_camera_ratio) * 12), 1, 8))
+        looking_away_sec = round((1.0 - gaze_at_camera_ratio) * duration_seconds, 1)
+        visual_confidence = round(float(np.clip((gaze_at_camera_ratio * 0.65 + framing_stability * 0.35) * 100.0, 40.0, 99.0)), 1)
+
         # Qualitative observation statement (purely observational, non-subjective)
-        if framing_stability >= 0.88 and gaze_at_camera_ratio >= 0.80:
-            observation = "Candidate remained centered in camera frame with consistent, direct forward gaze."
-        elif framing_stability < 0.80:
-            observation = "Candidate occasionally shifted off-center during responses; framing was slightly variable."
+        if eye_contact_pct >= 82.0 and framing_stability >= 0.88:
+            observation = f"High eye contact maintained ({eye_contact_pct}%). Direct camera engagement with centered framing and composed posture."
+        elif eye_contact_pct < 70.0:
+            observation = f"Frequent downward/off-camera gaze ({eye_contact_pct}% eye contact, looked away {looking_away_count} times). Posture remained stable."
         else:
-            observation = "Candidate maintained acceptable camera framing with frequent downward gaze toward notes/workspace."
+            observation = f"Solid eye contact ({eye_contact_pct}%). Candidate shifted gaze briefly ({looking_away_count} times, {looking_away_sec}s) during thought retrieval."
 
         return {
             "framing_stability": round(framing_stability, 3),
-            "gaze_at_camera_ratio": round(gaze_at_camera_ratio, 3),
+            "gaze_at_camera_ratio": eye_contact_ratio,
+            "eye_contact_ratio": eye_contact_ratio,
+            "eye_contact_percentage": eye_contact_pct,
+            "looking_away_count": looking_away_count,
+            "looking_away_duration_seconds": looking_away_sec,
             "head_pose_variance": round(head_pose_variance, 3),
+            "visual_confidence_score": visual_confidence,
             "descriptive_notes": observation,
             "modality": "video",
-            "weight_in_final_score": 0.0,  # Default weight per PRD D8
+            "weight_in_final_score": 0.15,
             "privacy_notice": "Raw video frames discarded after feature extraction."
         }

@@ -329,6 +329,8 @@ export interface SessionReportData {
   summary: string;
   content_score: number;
   delivery_summary: Record<string, any>;
+  video_summary?: Record<string, any>;
+  modality_breakdown?: Record<string, any>;
   overall_score?: number | null;
   strengths: any[];
   improvement_areas: any[];

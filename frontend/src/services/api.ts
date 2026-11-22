@@ -259,7 +259,8 @@ export class ApiService {
     transcript: string,
     isEdited: boolean = false,
     codeSubmission?: string,
-    codeTestResults?: any
+    codeTestResults?: any,
+    videoMetrics?: any
   ): Promise<AnswerResponseData> {
     const res = await fetch(`${API_BASE_URL}/interviews/${sessionId}/answers`, {
       method: 'POST',
@@ -270,6 +271,7 @@ export class ApiService {
         is_edited: isEdited,
         code_submission: codeSubmission,
         code_test_results: codeTestResults,
+        video_metrics: videoMetrics,
       }),
     });
     if (!res.ok) {
@@ -277,6 +279,31 @@ export class ApiService {
       throw new Error(err?.detail || 'Failed to submit answer');
     }
     return res.json();
+  }
+
+  static async recordVideoTelemetry(
+    sessionId: string,
+    metrics: {
+      eye_contact_ratio: number;
+      framing_stability: number;
+      head_pose_variance: number;
+      looking_away_count: number;
+      looking_away_duration_seconds: number;
+      visual_confidence_score: number;
+      descriptive_notes?: string;
+    }
+  ): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/interviews/${sessionId}/video-telemetry`, {
+        method: 'POST',
+        headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify(metrics),
+      });
+      if (!res.ok) return null;
+      return res.json();
+    } catch {
+      return null;
+    }
   }
 
   static async runCppCode(
@@ -315,13 +342,17 @@ export class ApiService {
     questionId: string,
     audioBlob: Blob,
     editedTranscript?: string,
-    filename: string = 'recording.wav'
+    filename: string = 'recording.wav',
+    videoMetrics?: any
   ): Promise<AnswerResponseData> {
     const formData = new FormData();
     formData.append('question_id', questionId);
     formData.append('file', audioBlob, filename);
     if (editedTranscript) {
       formData.append('edited_transcript', editedTranscript);
+    }
+    if (videoMetrics) {
+      formData.append('video_metrics', JSON.stringify(videoMetrics));
     }
 
     const res = await fetch(`${API_BASE_URL}/interviews/${sessionId}/answers/audio`, {

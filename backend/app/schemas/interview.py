@@ -112,6 +112,7 @@ class AnswerSubmitRequest(BaseModel):
     is_edited: bool = False
     code_submission: Optional[str] = None
     code_test_results: Optional[Dict[str, Any]] = None
+    video_metrics: Optional[Dict[str, Any]] = None
 
 class CriterionAssessmentResult(BaseModel):
     criterion_key: str
@@ -147,6 +148,8 @@ class SessionReportResponse(BaseModel):
     summary: str
     content_score: float  # 0 - 100%
     delivery_summary: Dict[str, Any]
+    video_summary: Optional[Dict[str, Any]] = None
+    modality_breakdown: Optional[Dict[str, Any]] = None
     overall_score: Optional[float] = None
     strengths: List[Any] = []
     improvement_areas: List[Any] = []

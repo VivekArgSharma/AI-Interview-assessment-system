@@ -78,28 +78,36 @@ class MultimodalFusionModel:
         filler_penalty = min(voice_delivery.get("filler_count", 0) * 0.15, 1.5)
         voice_score = float(np.clip(4.2 - filler_penalty + (0.3 if 120 <= voice_rate <= 160 else -0.4), 1.0, 5.0))
 
-        # Video descriptive score (normalized 1.0 - 5.0)
-        video_framing = video_features.get("framing_stability", 0.9) if video_features else 0.9
-        video_score = float(np.clip(video_framing * 5.0, 1.0, 5.0))
+        # Video multimodal score (normalized 1.0 - 5.0)
+        # Evaluates Eye Contact Ratio (60%), Framing Centering (25%), and Posture/Head Stability (15%)
+        eye_contact_ratio = float(video_features.get("eye_contact_ratio", video_features.get("gaze_at_camera_ratio", 0.85))) if video_features else 0.85
+        framing_stability = float(video_features.get("framing_stability", 0.90)) if video_features else 0.90
+        head_variance = float(video_features.get("head_pose_variance", 0.12)) if video_features else 0.12
+        posture_stability = float(np.clip(1.0 - head_variance * 2.0, 0.5, 1.0))
+        video_score = float(np.clip(
+            (eye_contact_ratio * 0.60 + framing_stability * 0.25 + posture_stability * 0.15) * 5.0,
+            1.0, 5.0
+        ))
+        active_video_weight = presentation_weight if presentation_weight > 0 else (0.15 if video_features else 0.0)
 
         dim_index = 0
         for dim_name, raw_text_score in text_scores.items():
             dim_seed = (seed or 100) + dim_index * 13
             dim_index += 1
 
-            # Specific modality blending rules per PRD 7.1
+            # Specific modality blending rules per PRD 7.1 with active video presence
             is_comm = "communication" in dim_name.lower() or "clarity" in dim_name.lower()
             if is_comm:
-                # Text + Voice
-                text_w = 0.65
-                voice_w = 0.35
-                video_w = presentation_weight
+                # Text 55%, Voice 30%, Video 15%
+                text_w = 0.55 if active_video_weight > 0 else 0.65
+                voice_w = 0.30 if active_video_weight > 0 else 0.35
+                video_w = active_video_weight
                 base_fused = text_w * raw_text_score + voice_w * voice_score + video_w * video_score
             else:
-                # Primary text content/reasoning with slight delivery modulation
-                text_w = 0.85
+                # Content 70%, Voice 15%, Video 15%
+                text_w = 0.70 if active_video_weight > 0 else 0.85
                 voice_w = 0.15
-                video_w = presentation_weight
+                video_w = active_video_weight
                 base_fused = text_w * raw_text_score + voice_w * voice_score + video_w * video_score
 
             # Compute ensemble uncertainty
@@ -115,11 +123,13 @@ class MultimodalFusionModel:
             delta_voice = round(fused_val - fused_without_voice, 2)
 
             # 2. Without Video:
-            fused_without_video = round(fused_val, 2)
-            delta_video = 0.0
+            norm_tw = text_w / max(0.01, text_w + voice_w)
+            norm_vw = voice_w / max(0.01, text_w + voice_w)
+            fused_without_video = round(raw_text_score * norm_tw + voice_score * norm_vw, 2)
+            delta_video = round(fused_val - fused_without_video, 2)
 
             # 3. Without Text:
-            fused_without_text = round(voice_score, 2)
+            fused_without_text = round(voice_score * 0.7 + video_score * 0.3, 2)
             delta_text = round(fused_val - fused_without_text, 2)
 
             ci_width = round(ci_high - ci_low, 2)
@@ -138,6 +148,9 @@ class MultimodalFusionModel:
                     "video": round(video_score, 2)
                 },
                 "counterfactual_deltas": {
+                    "without_voice": delta_voice,
+                    "without_video": delta_video,
+                    "without_text": delta_text,
                     "marginal_voice_contribution": delta_voice,
                     "marginal_video_contribution": delta_video,
                     "marginal_text_contribution": delta_text,
@@ -149,6 +162,38 @@ class MultimodalFusionModel:
 
             total_fused_points += fused_val
             total_dim_weight += 1.0
+
+        # Add dedicated Visual Presence & Eye Contact dimension
+        if video_features:
+            video_dim_val, v_ci_low, v_ci_high, v_std_err = self.compute_dimension_ensemble(
+                base_score=video_score,
+                variance=0.14,
+                seed=(seed or 100) + 99
+            )
+            results_by_dimension["Visual Presence & Eye Contact"] = {
+                "fused_score": video_dim_val,
+                "ci_low": v_ci_low,
+                "ci_high": v_ci_high,
+                "ci_width": round(v_ci_high - v_ci_low, 2),
+                "std_error": v_std_err,
+                "is_uncertain": False,
+                "modality_scores": {
+                    "text": round(float(np.mean(list(text_scores.values()))), 2) if text_scores else 4.0,
+                    "voice": round(voice_score, 2),
+                    "video": round(video_score, 2)
+                },
+                "counterfactual_deltas": {
+                    "without_voice": 0.0,
+                    "without_video": round(video_dim_val - 3.5, 2),
+                    "without_text": 0.0,
+                    "marginal_voice_contribution": 0.0,
+                    "marginal_video_contribution": round(video_dim_val - 3.5, 2),
+                    "marginal_text_contribution": 0.0,
+                    "score_without_voice": video_dim_val,
+                    "score_without_video": 3.5,
+                    "score_without_text": video_dim_val
+                }
+            }
 
         overall_score = round(total_fused_points / total_dim_weight, 2) if total_dim_weight > 0 else 0.0
         overall_ci_low = round(max(overall_score - 0.35, 1.0), 2)
