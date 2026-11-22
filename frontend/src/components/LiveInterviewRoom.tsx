@@ -663,8 +663,8 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
               )}
             </div>
 
-            <div className="p-5 bg-stone-50 border border-stone-200 rounded-none mb-5 relative min-h-[110px] flex items-center">
-              <p className="text-sm sm:text-base font-semibold text-stone-900 leading-relaxed font-sans">
+            <div className="p-5 bg-stone-50 border border-stone-200 rounded-none mb-5 relative min-h-[140px] max-h-[340px] overflow-y-auto flex items-start">
+              <p className="text-sm sm:text-base font-semibold text-stone-900 leading-relaxed font-sans whitespace-pre-wrap">
                 "{currentQuestion?.question_text || 'Preparing question...'}"
               </p>
             </div>
@@ -879,9 +879,9 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
                   value={cppCode}
                   onChange={(e) => setCppCode(e.target.value)}
                   onKeyDown={handleCodeKeyDown}
-                  rows={14}
+                  rows={18}
                   spellCheck={false}
-                  className="w-full bg-stone-950 text-emerald-400 font-mono text-xs p-4 focus:outline-none resize-y leading-relaxed"
+                  className="w-full bg-stone-950 text-emerald-400 font-mono text-xs p-4 focus:outline-none resize-y leading-relaxed min-h-[420px]"
                   placeholder="// Write your C++ solution here..."
                 />
               </div>

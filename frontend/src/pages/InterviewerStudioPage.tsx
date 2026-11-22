@@ -746,124 +746,203 @@ export const InterviewerStudioPage: React.FC<InterviewerStudioPageProps> = ({
                   </div>
                 </div>
 
-                {/* Question / Problem Prompt */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-stone-700 block">
-                    {q.question_type === 'verbal'
-                      ? 'Question Text (What the candidate is asked)'
-                      : 'Coding Problem Prompt & Instructions (C++)'}
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={q.question_text}
-                    onChange={(e) => handleQuestionChange(idx, 'question_text', e.target.value)}
-                    placeholder={
-                      q.question_type === 'verbal'
-                        ? 'Enter the scenario or technical prompt...'
-                        : 'Explain the problem statement, time/space constraints, and expected logic...'
-                    }
-                    className="w-full px-4 py-2.5 border border-stone-300 rounded-none text-xs font-medium focus:border-orange-500 focus:outline-none leading-relaxed"
-                    required
-                  />
-                </div>
-
-                {/* Coding Challenge Specific Editors (Starter Code + Test Cases) */}
-                {q.question_type && q.question_type !== 'verbal' && (
-                  <div className="space-y-5 p-5 bg-stone-50 border border-stone-200 rounded-none">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Code className="w-4 h-4 text-orange-600" />
-                        <span className="text-xs font-bold uppercase tracking-wider text-stone-900">
-                          C++ Coding Assessment Configuration (GCC C++20)
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono font-bold bg-orange-100 text-orange-800 px-2 py-0.5 border border-orange-200">
-                        {q.question_type === 'coding_bug_fix' ? 'Bug Fix Challenge' : 'Algorithm / LeetCode'}
-                      </span>
-                    </div>
-
-                    {/* Starter Code seen by Candidate */}
+                {/* ============================================================== */}
+                {/* 1. VERBAL QUESTION FORMAT */}
+                {/* ============================================================== */}
+                {(!q.question_type || q.question_type === 'verbal') && (
+                  <div className="space-y-5">
+                    {/* Question Prompt */}
                     <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold uppercase tracking-wider text-stone-700">
-                          Candidate Starter Code (C++)
-                        </label>
-                        <span className="text-[10px] text-stone-500">
-                          {q.question_type === 'coding_bug_fix'
-                            ? 'Code with bug that candidate must fix'
-                            : 'Boilerplate function and I/O loop'}
-                        </span>
-                      </div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-stone-700 block">
+                        Question Text (What the candidate is asked)
+                      </label>
                       <textarea
-                        rows={7}
-                        value={q.starter_code || ''}
-                        onChange={(e) => handleQuestionChange(idx, 'starter_code', e.target.value)}
-                        placeholder="#include <iostream>..."
-                        className="w-full px-4 py-3 bg-stone-900 text-emerald-400 font-mono text-xs border border-stone-700 rounded-none focus:border-orange-500 focus:outline-none leading-relaxed"
+                        rows={4}
+                        value={q.question_text}
+                        onChange={(e) => handleQuestionChange(idx, 'question_text', e.target.value)}
+                        placeholder="Enter the scenario or technical prompt..."
+                        className="w-full px-4 py-3 border border-stone-300 rounded-none text-xs font-medium focus:border-orange-500 focus:outline-none leading-relaxed min-h-[100px]"
                         required
                       />
                     </div>
 
-                    {/* Test Cases Manager */}
-                    <div className="space-y-3 pt-2">
+                    {/* Model Correct Answer */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-wider text-orange-700 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Model Correct Answer (Semantic Standard)</span>
+                        </label>
+                        <span className="text-[10px] text-stone-400">
+                          Sentence-BERT cosine similarity target
+                        </span>
+                      </div>
+                      <textarea
+                        rows={5}
+                        value={q.correct_answer}
+                        onChange={(e) => handleQuestionChange(idx, 'correct_answer', e.target.value)}
+                        placeholder="Type the ideal candidate response, trade-offs, and architectural solutions..."
+                        className="w-full px-4 py-3 bg-orange-50/20 border border-orange-200 rounded-none text-xs font-medium focus:border-orange-500 focus:outline-none leading-relaxed text-stone-900 min-h-[120px]"
+                        required
+                      />
+                    </div>
+
+                    {/* Key Concepts */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-stone-600 block">
+                        Required Key Concepts (Comma-separated keywords)
+                      </label>
+                      <input
+                        type="text"
+                        value={q.key_concepts_text}
+                        onChange={(e) => handleQuestionChange(idx, 'key_concepts_text', e.target.value)}
+                        placeholder="e.g. idempotency key, Redis SETNX, atomic check, TTL"
+                        className="w-full px-4 py-2.5 border border-stone-300 rounded-none text-xs font-mono text-stone-700 focus:border-orange-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* ============================================================== */}
+                {/* 2. C++ BUG FIX FORMAT: SIDE-BY-SIDE BUGGY VS CORRECT WINDOWS */}
+                {/* ============================================================== */}
+                {q.question_type === 'coding_bug_fix' && (
+                  <div className="space-y-6">
+                    {/* Problem Statement & Bug Description */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-wider text-stone-800 flex items-center gap-2">
+                          <Terminal className="w-4 h-4 text-orange-600" />
+                          <span>Bug Fix Problem Description & Symptoms (Candidate Instructions)</span>
+                        </label>
+                        <span className="text-[10px] font-mono px-2 py-0.5 bg-orange-100 text-orange-800 font-bold border border-orange-200">
+                          GCC 15 • C++20
+                        </span>
+                      </div>
+                      <textarea
+                        rows={4}
+                        value={q.question_text}
+                        onChange={(e) => handleQuestionChange(idx, 'question_text', e.target.value)}
+                        placeholder="Explain what the function does, what bug exists (e.g. iterator invalidation, off-by-one, memory leak), and what the candidate must fix..."
+                        className="w-full px-4 py-3 border border-stone-300 rounded-none text-xs font-medium focus:border-orange-500 focus:outline-none leading-relaxed min-h-[100px]"
+                        required
+                      />
+                    </div>
+
+                    {/* SIDE-BY-SIDE CODE WINDOWS: BUGGED CODE vs CORRECT WORKING CODE */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-stone-900">
+                          Side-by-Side Code Windows: Buggy Starter vs. Correct Reference
+                        </span>
+                        <span className="text-[11px] text-stone-500 font-medium">
+                          Candidate sees the buggy code on left; test cases validate against the correct logic.
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                        {/* WINDOW 1: Buggy / Flawed Code */}
+                        <div className="border border-rose-300 rounded-none bg-stone-950 overflow-hidden shadow-xs flex flex-col">
+                          <div className="px-4 py-2.5 bg-rose-950/70 border-b border-rose-800/60 flex items-center justify-between text-xs font-mono">
+                            <div className="flex items-center gap-2 text-rose-300 font-bold">
+                              <span className="w-2.5 h-2.5 bg-rose-500 rounded-none inline-block animate-pulse" />
+                              <span className="uppercase">1. Buggy Code (Given to Candidate)</span>
+                            </div>
+                            <span className="text-[10px] text-rose-300/80 font-sans">Contains bug</span>
+                          </div>
+                          <textarea
+                            rows={16}
+                            value={q.starter_code || ''}
+                            onChange={(e) => handleQuestionChange(idx, 'starter_code', e.target.value)}
+                            placeholder="// Paste buggy C++ code here..."
+                            spellCheck={false}
+                            className="w-full bg-stone-950 text-rose-200 font-mono text-xs p-4 focus:outline-none resize-y leading-relaxed min-h-[380px]"
+                            required
+                          />
+                        </div>
+
+                        {/* WINDOW 2: Correct / Working Reference Code */}
+                        <div className="border border-emerald-300 rounded-none bg-stone-950 overflow-hidden shadow-xs flex flex-col">
+                          <div className="px-4 py-2.5 bg-emerald-950/70 border-b border-emerald-800/60 flex items-center justify-between text-xs font-mono">
+                            <div className="flex items-center gap-2 text-emerald-300 font-bold">
+                              <span className="w-2.5 h-2.5 bg-emerald-500 rounded-none inline-block" />
+                              <span className="uppercase">2. Correct Reference Code (Model Solution)</span>
+                            </div>
+                            <span className="text-[10px] text-emerald-300/80 font-sans">Working target</span>
+                          </div>
+                          <textarea
+                            rows={16}
+                            value={q.correct_answer}
+                            onChange={(e) => handleQuestionChange(idx, 'correct_answer', e.target.value)}
+                            placeholder="// Paste clean fixed working C++ code here..."
+                            spellCheck={false}
+                            className="w-full bg-stone-950 text-emerald-300 font-mono text-xs p-4 focus:outline-none resize-y leading-relaxed min-h-[380px]"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Test Cases Manager for Bug Fix */}
+                    <div className="space-y-3 pt-2 p-5 bg-stone-50 border border-stone-200 rounded-none">
                       <div className="flex items-center justify-between">
                         <div>
-                          <span className="text-xs font-bold uppercase tracking-wider text-stone-800 block">
-                            Automated Test Cases (stdin → stdout)
+                          <span className="text-xs font-bold uppercase tracking-wider text-stone-900 block">
+                            Automated Test Cases for Bug Fix (stdin → stdout)
                           </span>
                           <span className="text-[10px] text-stone-500">
-                            Candidate's compiled C++ binary will be executed against these inputs with 4-second timeout.
+                            Candidate's fixed solution must pass these input/output checks.
                           </span>
                         </div>
                         <button
                           type="button"
                           onClick={() => handleAddTestCase(idx)}
-                          className="px-3 py-1 bg-white hover:bg-stone-100 text-stone-800 text-[11px] font-bold uppercase tracking-wider border border-stone-300 rounded-none flex items-center gap-1 shadow-xs"
+                          className="px-3.5 py-1.5 bg-white hover:bg-stone-100 text-stone-900 text-xs font-bold uppercase tracking-wider border border-stone-300 rounded-none flex items-center gap-1.5 shadow-xs transition-colors"
                         >
                           <Plus className="w-3.5 h-3.5 text-orange-600" />
                           <span>Add Test Case</span>
                         </button>
                       </div>
 
-                      <div className="space-y-2.5">
+                      <div className="space-y-3">
                         {(q.test_cases || []).map((tc, tcIdx) => (
                           <div
                             key={tc.id || tcIdx}
-                            className="p-3 bg-white border border-stone-200 rounded-none grid grid-cols-1 md:grid-cols-12 gap-3 items-start"
+                            className="p-4 bg-white border border-stone-200 rounded-none grid grid-cols-1 md:grid-cols-12 gap-3 items-start"
                           >
                             <div className="md:col-span-1 flex items-center gap-1 pt-2">
-                              <span className="text-[10px] font-mono font-bold text-stone-500">
+                              <span className="text-xs font-mono font-bold text-stone-500">
                                 #{tcIdx + 1}
                               </span>
                             </div>
 
                             <div className="md:col-span-5 space-y-1">
-                              <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-stone-600 block">
                                 Input (stdin)
                               </label>
                               <textarea
-                                rows={2}
+                                rows={3}
                                 value={tc.input}
                                 onChange={(e) =>
                                   handleTestCaseChange(idx, tcIdx, 'input', e.target.value)
                                 }
                                 placeholder="e.g. 5 10\n5 12 8 15 20"
-                                className="w-full px-2.5 py-1.5 font-mono text-xs border border-stone-300 rounded-none focus:border-orange-500 focus:outline-none"
+                                className="w-full px-3 py-2 font-mono text-xs border border-stone-300 rounded-none focus:border-orange-500 focus:outline-none"
                               />
                             </div>
 
                             <div className="md:col-span-5 space-y-1">
-                              <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-stone-600 block">
                                 Expected Output (stdout)
                               </label>
                               <textarea
-                                rows={2}
+                                rows={3}
                                 value={tc.expected_output}
                                 onChange={(e) =>
                                   handleTestCaseChange(idx, tcIdx, 'expected_output', e.target.value)
                                 }
                                 placeholder="e.g. 12 15 20"
-                                className="w-full px-2.5 py-1.5 font-mono text-xs border border-stone-300 rounded-none focus:border-orange-500 focus:outline-none"
+                                className="w-full px-3 py-2 font-mono text-xs border border-stone-300 rounded-none focus:border-orange-500 focus:outline-none"
                               />
                             </div>
 
@@ -875,7 +954,7 @@ export const InterviewerStudioPage: React.FC<InterviewerStudioPageProps> = ({
                                   className="p-1.5 text-stone-400 hover:text-rose-600 transition-colors"
                                   title="Delete test case"
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               )}
                             </div>
@@ -883,57 +962,187 @@ export const InterviewerStudioPage: React.FC<InterviewerStudioPageProps> = ({
                         ))}
                       </div>
                     </div>
+
+                    {/* Key Concepts */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-stone-600 block">
+                        Required Key Concepts (Comma-separated keywords)
+                      </label>
+                      <input
+                        type="text"
+                        value={q.key_concepts_text}
+                        onChange={(e) => handleQuestionChange(idx, 'key_concepts_text', e.target.value)}
+                        placeholder="e.g. iterator invalidation, vector erase, bounds check, memory safety"
+                        className="w-full px-4 py-2.5 border border-stone-300 rounded-none text-xs font-mono text-stone-700 focus:border-orange-500 focus:outline-none"
+                      />
+                    </div>
                   </div>
                 )}
 
-                {/* Model Correct Answer / Reference Solution */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold uppercase tracking-wider text-orange-700 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>
-                        {q.question_type === 'verbal'
-                          ? 'Model Correct Answer (Semantic Standard)'
-                          : 'Interviewer Reference C++ Working Solution'}
-                      </span>
-                    </label>
-                    <span className="text-[10px] text-stone-400">
-                      {q.question_type === 'verbal'
-                        ? 'Sentence-BERT cosine similarity target'
-                        : 'Clean working C++ implementation for candidate report comparison'}
-                    </span>
-                  </div>
-                  <textarea
-                    rows={q.question_type === 'verbal' ? 3 : 7}
-                    value={q.correct_answer}
-                    onChange={(e) => handleQuestionChange(idx, 'correct_answer', e.target.value)}
-                    placeholder={
-                      q.question_type === 'verbal'
-                        ? 'Type the ideal candidate response, trade-offs, and architectural solutions...'
-                        : '#include <iostream>...'
-                    }
-                    className={`w-full px-4 py-2.5 border rounded-none text-xs font-medium focus:border-orange-500 focus:outline-none leading-relaxed ${
-                      q.question_type === 'verbal'
-                        ? 'bg-orange-50/20 border-orange-200 text-stone-900'
-                        : 'bg-stone-900 border-stone-700 text-amber-300 font-mono'
-                    }`}
-                    required
-                  />
-                </div>
+                {/* ============================================================== */}
+                {/* 3. C++ LEETCODE ALGORITHM FORMAT: PROBLEM + BOILERPLATE + TESTS */}
+                {/* ============================================================== */}
+                {q.question_type === 'coding_leetcode' && (
+                  <div className="space-y-6">
+                    {/* LeetCode Problem Statement & Constraints */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-wider text-stone-900 flex items-center gap-2">
+                          <Code className="w-4 h-4 text-orange-600" />
+                          <span>LeetCode Problem Statement, Constraints & Target Complexity</span>
+                        </label>
+                        <span className="text-[10px] font-mono px-2 py-0.5 bg-stone-900 text-white font-bold">
+                          LeetCode Style Challenge
+                        </span>
+                      </div>
+                      <textarea
+                        rows={6}
+                        value={q.question_text}
+                        onChange={(e) => handleQuestionChange(idx, 'question_text', e.target.value)}
+                        placeholder="Type the full problem description, example inputs/outputs, constraints, and asymptotic complexity goals:&#10;&#10;e.g. Given an integer array nums, find the contiguous subarray with the largest sum and return its sum.&#10;&#10;Constraints:&#10;• 1 <= nums.length <= 10^5&#10;• Target: O(N) time and O(1) auxiliary space."
+                        className="w-full px-4 py-3 border border-stone-300 rounded-none text-xs font-medium focus:border-orange-500 focus:outline-none leading-relaxed min-h-[140px]"
+                        required
+                      />
+                    </div>
 
-                {/* Key Concepts */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-stone-600 block">
-                    Required Key Concepts (Comma-separated keywords)
-                  </label>
-                  <input
-                    type="text"
-                    value={q.key_concepts_text}
-                    onChange={(e) => handleQuestionChange(idx, 'key_concepts_text', e.target.value)}
-                    placeholder="e.g. idempotency key, Redis SETNX, atomic check, TTL"
-                    className="w-full px-4 py-2 border border-stone-300 rounded-none text-xs font-mono text-stone-700 focus:border-orange-500 focus:outline-none"
-                  />
-                </div>
+                    {/* Candidate Starter Code (Boilerplate / Function Signature) */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-wider text-stone-800">
+                          Candidate Starter Code (C++ Boilerplate & Function Signature)
+                        </label>
+                        <span className="text-[10px] text-stone-500">
+                          What candidate begins with in their editor
+                        </span>
+                      </div>
+                      <textarea
+                        rows={11}
+                        value={q.starter_code || ''}
+                        onChange={(e) => handleQuestionChange(idx, 'starter_code', e.target.value)}
+                        placeholder="#include <iostream>&#10;#include <vector>&#10;&#10;// Write signature here..."
+                        spellCheck={false}
+                        className="w-full px-4 py-3 bg-stone-950 text-emerald-400 font-mono text-xs border border-stone-800 rounded-none focus:border-orange-500 focus:outline-none leading-relaxed min-h-[240px]"
+                        required
+                      />
+                    </div>
+
+                    {/* Optimal Reference Working Solution */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-wider text-orange-700 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Optimal Reference Working Solution (C++20 Model Answer)</span>
+                        </label>
+                        <span className="text-[10px] text-stone-400">
+                          Used for candidate report comparison
+                        </span>
+                      </div>
+                      <textarea
+                        rows={13}
+                        value={q.correct_answer}
+                        onChange={(e) => handleQuestionChange(idx, 'correct_answer', e.target.value)}
+                        placeholder="#include <iostream>&#10;// Full working C++ solution..."
+                        spellCheck={false}
+                        className="w-full px-4 py-3 bg-stone-900 border border-stone-700 text-amber-300 font-mono text-xs rounded-none focus:border-orange-500 focus:outline-none leading-relaxed min-h-[280px]"
+                        required
+                      />
+                    </div>
+
+                    {/* LeetCode Automated Test Cases Manager */}
+                    <div className="space-y-3 pt-2 p-5 bg-stone-50 border border-stone-200 rounded-none">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-bold uppercase tracking-wider text-stone-900 block">
+                            LeetCode Test Cases (stdin → stdout)
+                          </span>
+                          <span className="text-[10px] text-stone-500">
+                            Candidate's solution will be executed against each input with a 4-second runtime limit.
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleAddTestCase(idx)}
+                          className="px-3.5 py-1.5 bg-white hover:bg-stone-100 text-stone-900 text-xs font-bold uppercase tracking-wider border border-stone-300 rounded-none flex items-center gap-1.5 shadow-xs transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-orange-600" />
+                          <span>Add Test Case</span>
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {(q.test_cases || []).map((tc, tcIdx) => (
+                          <div
+                            key={tc.id || tcIdx}
+                            className="p-4 bg-white border border-stone-200 rounded-none grid grid-cols-1 md:grid-cols-12 gap-3 items-start"
+                          >
+                            <div className="md:col-span-1 flex items-center gap-1 pt-2">
+                              <span className="text-xs font-mono font-bold text-stone-500">
+                                #{tcIdx + 1}
+                              </span>
+                            </div>
+
+                            <div className="md:col-span-5 space-y-1">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-stone-600 block">
+                                Input (stdin)
+                              </label>
+                              <textarea
+                                rows={3}
+                                value={tc.input}
+                                onChange={(e) =>
+                                  handleTestCaseChange(idx, tcIdx, 'input', e.target.value)
+                                }
+                                placeholder="e.g. 9\n-2 1 -3 4 -1 2 1 -5 4"
+                                className="w-full px-3 py-2 font-mono text-xs border border-stone-300 rounded-none focus:border-orange-500 focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="md:col-span-5 space-y-1">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-stone-600 block">
+                                Expected Output (stdout)
+                              </label>
+                              <textarea
+                                rows={3}
+                                value={tc.expected_output}
+                                onChange={(e) =>
+                                  handleTestCaseChange(idx, tcIdx, 'expected_output', e.target.value)
+                                }
+                                placeholder="e.g. 6"
+                                className="w-full px-3 py-2 font-mono text-xs border border-stone-300 rounded-none focus:border-orange-500 focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="md:col-span-1 flex justify-end pt-2">
+                              {(q.test_cases?.length || 0) > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveTestCase(idx, tcIdx)}
+                                  className="p-1.5 text-stone-400 hover:text-rose-600 transition-colors"
+                                  title="Delete test case"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Key Concepts */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-stone-600 block">
+                        Required Key Concepts (Comma-separated keywords)
+                      </label>
+                      <input
+                        type="text"
+                        value={q.key_concepts_text}
+                        onChange={(e) => handleQuestionChange(idx, 'key_concepts_text', e.target.value)}
+                        placeholder="e.g. Kadane algorithm, dynamic programming, O(N) time, O(1) space"
+                        className="w-full px-4 py-2.5 border border-stone-300 rounded-none text-xs font-mono text-stone-700 focus:border-orange-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
