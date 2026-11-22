@@ -895,6 +895,20 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
                   <VideoOff className="w-6 h-6 text-stone-400 mx-auto mb-1" />
                   <p className="text-xs font-bold text-stone-300 uppercase tracking-wider">Video Disabled</p>
                   <p className="text-[10px] text-stone-400 mt-0.5">Privacy Mode active (Video weight redistributed to audio/text)</p>
+                  <button
+                    onClick={() => {
+                      setVideoEnabled(true);
+                      navigator.mediaDevices?.getUserMedia({ video: { width: 480, height: 360 } })
+                        .then((stream) => {
+                          setVideoStream(stream);
+                          if (videoRef.current) videoRef.current.srcObject = stream;
+                        })
+                        .catch(() => {});
+                    }}
+                    className="mt-3 px-3.5 py-1.5 rounded-none bg-orange-600 hover:bg-orange-700 text-white text-[11px] font-bold uppercase tracking-wider shadow-xs transition-colors"
+                  >
+                    Turn On Camera & Eye Tracking
+                  </button>
                 </div>
               )}
             </div>

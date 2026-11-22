@@ -38,7 +38,8 @@ class InterviewSessionManager:
         track_id: str,
         difficulty: str = "intermediate",
         duration_minutes: int = 10,
-        voice_preference: str = "default"
+        voice_preference: str = "default",
+        video_enabled: bool = True
     ) -> InterviewSession:
         track = db.query(InterviewTrack).filter(InterviewTrack.id == track_id, InterviewTrack.is_active == True).first()
         if not track:
@@ -56,6 +57,7 @@ class InterviewSessionManager:
             difficulty=difficulty,
             duration_minutes=duration_minutes,
             voice_preference=voice_preference,
+            video_enabled=video_enabled,
             status="created",
             current_stage_index=0,
             follow_up_count_current_stage=0,

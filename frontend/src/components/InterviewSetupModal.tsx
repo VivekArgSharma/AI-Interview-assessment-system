@@ -11,7 +11,13 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  Radio
+  Radio,
+  Video,
+  VideoOff,
+  Eye,
+  EyeOff,
+  Camera,
+  ShieldCheck
 } from 'lucide-react';
 import { InterviewTrack, StageInfo } from '../types';
 import { voiceEngine, DEFAULT_VOICES } from '../services/voiceEngine';
@@ -26,6 +32,7 @@ interface InterviewSetupModalProps {
     difficulty: 'beginner' | 'intermediate' | 'advanced';
     durationMinutes: number;
     voicePreference: string;
+    videoEnabled?: boolean;
   }) => Promise<void>;
   isLoading: boolean;
 }
@@ -45,14 +52,18 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [consentGranted, setConsentGranted] = useState<boolean>(true);
 
-  // Mic test state
-  const [isTestingMic, setIsTestingMic] = useState<boolean>(false);
+  // AV Hardware Pre-Flight State
+  const [isMediaActive, setIsMediaActive] = useState<boolean>(false);
+  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const [micVolume, setMicVolume] = useState<number>(0);
   const [micError, setMicError] = useState<string | null>(null);
+  const [videoEnabled, setVideoEnabled] = useState<boolean>(true);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const micStreamRef = useRef<MediaStream | null>(null);
+  const combinedStreamRef = useRef<MediaStream | null>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -73,17 +84,40 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.onvoiceschanged = updateVoices;
     }
-    return () => {
-      stopMicTest();
-    };
   }, []);
 
-  const startMicTest = async () => {
+  // Automatically start camera & mic check when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      startMediaCheck();
+    } else {
+      stopMediaCheck();
+    }
+    return () => {
+      stopMediaCheck();
+    };
+  }, [isOpen]);
+
+  const startMediaCheck = async () => {
     try {
       setMicError(null);
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      micStreamRef.current = stream;
+      setCameraError(null);
 
+      // Request both Camera and Microphone permissions
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 480, height: 360 },
+        audio: true
+      });
+      combinedStreamRef.current = stream;
+      setIsMediaActive(true);
+      setIsCameraActive(true);
+
+      // Connect video stream to preview
+      if (cameraVideoRef.current) {
+        cameraVideoRef.current.srcObject = stream;
+      }
+
+      // Initialize Web Audio analyser for real-time mic volume tracking
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       audioContextRef.current = audioCtx;
 
@@ -93,8 +127,6 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
 
       const source = audioCtx.createMediaStreamSource(stream);
       source.connect(analyser);
-
-      setIsTestingMic(true);
 
       const buffer = new Uint8Array(analyser.frequencyBinCount);
       const checkVolume = () => {
@@ -110,25 +142,58 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
       };
       checkVolume();
     } catch (err: any) {
-      setMicError('Microphone permission denied or microphone unavailable. Please check browser permissions.');
-      setIsTestingMic(false);
+      console.warn('Combined camera/mic check warning:', err);
+      // Fallback: try audio-only to identify if only camera was denied
+      try {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        combinedStreamRef.current = audioStream;
+        setIsMediaActive(true);
+        setIsCameraActive(false);
+        setCameraError('Camera access not granted. Click "Allow Camera" to enable 15% eye contact scoring.');
+
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContextRef.current = audioCtx;
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        analyserRef.current = analyser;
+        const source = audioCtx.createMediaStreamSource(audioStream);
+        source.connect(analyser);
+
+        const buffer = new Uint8Array(analyser.frequencyBinCount);
+        const checkVolume = () => {
+          if (!analyserRef.current) return;
+          analyserRef.current.getByteFrequencyData(buffer);
+          let sum = 0;
+          for (let i = 0; i < buffer.length; i++) sum += buffer[i];
+          const avg = sum / buffer.length;
+          setMicVolume(Math.min(100, Math.round((avg / 128) * 100)));
+          animFrameRef.current = requestAnimationFrame(checkVolume);
+        };
+        checkVolume();
+      } catch (audioErr) {
+        setMicError('Microphone permission denied. Spoken interviews require microphone access.');
+        setCameraError('Camera permission not granted. Please allow camera in your browser.');
+        setIsMediaActive(false);
+        setIsCameraActive(false);
+      }
     }
   };
 
-  const stopMicTest = () => {
+  const stopMediaCheck = () => {
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
     }
-    if (micStreamRef.current) {
-      micStreamRef.current.getTracks().forEach((t) => t.stop());
-      micStreamRef.current = null;
+    if (combinedStreamRef.current) {
+      combinedStreamRef.current.getTracks().forEach((t) => t.stop());
+      combinedStreamRef.current = null;
     }
     if (audioContextRef.current) {
       audioContextRef.current.close().catch(() => {});
       audioContextRef.current = null;
     }
-    setIsTestingMic(false);
+    setIsMediaActive(false);
+    setIsCameraActive(false);
     setMicVolume(0);
   };
 
@@ -139,12 +204,13 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
   };
 
   const handleStart = async () => {
-    stopMicTest();
+    stopMediaCheck();
     await onStartSession({
       trackId: selectedTrackId,
       difficulty,
       durationMinutes,
       voicePreference,
+      videoEnabled,
     });
   };
 
@@ -155,7 +221,7 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
       <div className="bg-white border border-stone-200 rounded-none w-full max-w-2xl p-6 sm:p-8 shadow-2xl relative text-stone-900 my-8 space-y-6">
         <button
           onClick={() => {
-            stopMicTest();
+            stopMediaCheck();
             onClose();
           }}
           className="absolute top-5 right-5 text-stone-400 hover:text-stone-800 transition-colors"
@@ -297,40 +363,125 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
             </select>
           </div>
 
-          {/* 4. Microphone Test & Consent */}
-          <div className="p-4 bg-stone-50 border border-stone-200 rounded-none space-y-3">
-            <div className="flex items-center justify-between">
+          {/* 4. Camera & Microphone Hardware Pre-Flight Check */}
+          <div className="p-4 bg-stone-50 border border-stone-200 rounded-none space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-stone-200">
               <div className="flex items-center gap-2">
-                <Mic className="w-4 h-4 text-orange-600" />
-                <span className="text-xs font-bold uppercase tracking-wider text-stone-800">Microphone Audio Test</span>
+                <Video className="w-4 h-4 text-orange-600" />
+                <span className="text-xs font-bold uppercase tracking-wider text-stone-800">
+                  Camera & Microphone Pre-Flight Check
+                </span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-none bg-orange-100 text-orange-800 border border-orange-200">
+                  Active 15% Video Weight
+                </span>
               </div>
               <button
                 type="button"
-                onClick={isTestingMic ? stopMicTest : startMicTest}
+                onClick={isMediaActive ? stopMediaCheck : startMediaCheck}
                 className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-none border transition-colors ${
-                  isTestingMic
-                    ? 'bg-rose-50 border-rose-300 text-rose-700 animate-pulse'
+                  isMediaActive
+                    ? 'bg-rose-50 border-rose-300 text-rose-700'
                     : 'bg-white hover:bg-stone-100 border-stone-200 text-stone-700 shadow-xs'
                 }`}
               >
-                {isTestingMic ? 'Stop Test' : 'Check Mic'}
+                {isMediaActive ? 'Stop Preview' : 'Check Camera & Mic'}
               </button>
             </div>
 
-            {isTestingMic && (
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-[11px] text-stone-500 font-semibold mb-1">
-                  <span>Input Volume Level:</span>
-                  <span className={micVolume > 20 ? 'text-emerald-600 font-bold' : 'text-stone-500'}>
-                    {micVolume > 10 ? 'Microphone Active' : 'Speak into mic...'}
-                  </span>
+            {/* Live Camera Preview Box with Reticle */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+              <div className="sm:col-span-5 h-36 bg-stone-900 rounded-none border border-stone-200 overflow-hidden relative flex items-center justify-center">
+                {isCameraActive ? (
+                  <>
+                    <video
+                      ref={cameraVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover mirror"
+                    />
+                    {/* Reticle Overlay */}
+                    <div className="absolute inset-3 pointer-events-none border border-dashed border-white/20 flex flex-col justify-between p-1">
+                      <div className="flex justify-between items-start">
+                        <div className="w-2.5 h-2.5 border-t-2 border-l-2 border-orange-400" />
+                        <div className="w-2.5 h-2.5 border-t-2 border-r-2 border-orange-400" />
+                      </div>
+                      <div className="flex justify-between items-end">
+                        <div className="w-2.5 h-2.5 border-b-2 border-l-2 border-orange-400" />
+                        <div className="w-2.5 h-2.5 border-b-2 border-r-2 border-orange-400" />
+                      </div>
+                    </div>
+                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-none bg-emerald-950/85 text-emerald-300 text-[9px] font-mono font-bold border border-emerald-500/50 flex items-center gap-1">
+                      <Eye className="w-2.5 h-2.5 text-emerald-400" />
+                      <span>Tracking Active</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center p-3">
+                    <Camera className="w-6 h-6 text-stone-500 mx-auto mb-1" />
+                    <p className="text-[11px] font-bold text-stone-300">Camera Inactive</p>
+                    <button
+                      type="button"
+                      onClick={startMediaCheck}
+                      className="mt-1.5 px-2 py-1 text-[10px] font-bold text-orange-400 hover:text-orange-300 underline"
+                    >
+                      Click to Allow Camera
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Hardware Status & Microphone Level */}
+              <div className="sm:col-span-7 space-y-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-stone-700">
+                    <span className="flex items-center gap-1.5">
+                      <Mic className="w-3.5 h-3.5 text-stone-500" />
+                      Microphone Volume:
+                    </span>
+                    <span className={micVolume > 15 ? 'text-emerald-600 font-bold' : 'text-stone-400'}>
+                      {micVolume > 10 ? 'Audio Receiving' : isMediaActive ? 'Speak to test...' : 'Offline'}
+                    </span>
+                  </div>
+                  <div className="w-full h-2.5 bg-stone-200 rounded-none overflow-hidden flex border border-stone-300">
+                    <div
+                      className="h-full bg-gradient-to-r from-emerald-500 via-orange-400 to-rose-500 transition-all duration-75"
+                      style={{ width: `${micVolume}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full h-2.5 bg-stone-200 rounded-none overflow-hidden flex border border-stone-300">
-                  <div
-                    className="h-full bg-gradient-to-r from-emerald-500 via-orange-400 to-rose-500 transition-all duration-75"
-                    style={{ width: `${micVolume}%` }}
-                  />
+
+                <div className="text-[11px] space-y-1 font-mono text-stone-500">
+                  <div className="flex items-center justify-between">
+                    <span>Camera Status:</span>
+                    <span className={isCameraActive ? 'text-emerald-600 font-bold' : 'text-amber-600'}>
+                      {isCameraActive ? '🟢 Connected (15% Weight)' : '⚠️ Action Needed'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Eye Contact Sensor:</span>
+                    <span className={isCameraActive ? 'text-emerald-600 font-bold' : 'text-stone-400'}>
+                      {isCameraActive ? 'Calibrated Reticle' : 'Waiting for Video'}
+                    </span>
+                  </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Error notifications */}
+            {cameraError && (
+              <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-none flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>{cameraError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={startMediaCheck}
+                  className="px-2.5 py-1 bg-amber-600 text-white font-bold text-[10px] uppercase rounded-none hover:bg-amber-700 shrink-0"
+                >
+                  Retry Camera
+                </button>
               </div>
             )}
 
@@ -350,7 +501,7 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
                 className="mt-0.5 rounded-none border-stone-300 text-orange-600 focus:ring-0"
               />
               <label htmlFor="interviewConsent" className="text-xs text-stone-600 leading-relaxed">
-                I understand this session evaluates spoken dialogue and that audio is processed to analyze speaking rate, pauses, and rubric criteria.
+                I understand this session evaluates spoken dialogue and camera eye contact. Video and audio are processed securely to score content, vocal delivery, and visual composure.
               </label>
             </div>
           </div>
@@ -361,7 +512,7 @@ export const InterviewSetupModal: React.FC<InterviewSetupModalProps> = ({
           <button
             type="button"
             onClick={() => {
-              stopMicTest();
+              stopMediaCheck();
               onClose();
             }}
             className="px-5 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold uppercase tracking-wider rounded-none transition-colors"

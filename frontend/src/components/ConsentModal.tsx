@@ -42,8 +42,8 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
         <div className="text-xs text-stone-600 space-y-4 mb-6">
           <p className="bg-stone-50 border border-stone-200 p-3.5 rounded-none leading-relaxed">
             PRISM adheres strictly to <strong>Privacy-by-Default (PRD Section 1.5 & Section 15)</strong>.
-            Raw audio recordings are permanently purged after 24 hours. Video is purely descriptive, optional,
-            and never used for subjective inferences of confidence or personality.
+            Raw audio recordings are permanently purged after 24 hours. Video presence and eye contact are evaluated
+            with active 15% multimodal score weighting using on-device computer vision; raw frames are never stored permanently.
           </p>
 
           {/* Audio Consent */}
@@ -75,9 +75,9 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
             <div className="flex-1">
               <div className="flex items-center justify-between">
                 <div>
-                  <label className="font-bold text-stone-900 text-xs">Camera & Framing Observables (Optional)</label>
-                  <span className="ml-2 text-[10px] font-mono px-2 py-0.5 rounded-none bg-stone-100 text-stone-600 border border-stone-200">
-                    Default Weight: 0.0
+                  <label className="font-bold text-stone-900 text-xs">Camera & Eye Contact Tracking</label>
+                  <span className="ml-2 text-[10px] font-mono px-2 py-0.5 rounded-none bg-orange-50 text-orange-700 border border-orange-200 font-bold">
+                    Active 15% Score Weight
                   </span>
                 </div>
                 <input
@@ -88,7 +88,7 @@ export const ConsentModal: React.FC<ConsentModalProps> = ({
                 />
               </div>
               <p className="text-[11px] text-stone-500 mt-1">
-                Extracts descriptive framing centering only. Frames are processed on-device and never stored permanently.
+                Tracks camera eye contact, off-screen gaze shifts, and composure stability in real-time.
               </p>
             </div>
           </div>

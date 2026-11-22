@@ -70,6 +70,7 @@ class InterviewCreateRequest(BaseModel):
     difficulty: str = "intermediate"  # beginner, intermediate, advanced
     duration_minutes: int = 10         # 5, 10, 20
     voice_preference: str = "default"
+    video_enabled: Optional[bool] = True
 
 class QuestionResponse(BaseModel):
     id: str
@@ -92,7 +93,7 @@ class InterviewSessionResponse(BaseModel):
     status: str  # created, in_progress, paused, completed, abandoned
     mode: Optional[str] = "live"
     scenario_id: Optional[str] = None
-    video_enabled: Optional[bool] = False
+    video_enabled: Optional[bool] = True
     needs_review: Optional[bool] = False
     review_reason: Optional[str] = None
     current_stage: Optional[str] = None

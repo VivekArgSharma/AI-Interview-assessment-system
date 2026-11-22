@@ -168,11 +168,18 @@ export class ApiService {
     difficulty: string;
     duration_minutes: number;
     voice_preference?: string;
+    video_enabled?: boolean;
   }): Promise<InterviewSessionData> {
     const res = await fetch(`${API_BASE_URL}/interviews`, {
       method: 'POST',
       headers: this.getHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        track_id: data.track_id,
+        difficulty: data.difficulty,
+        duration_minutes: data.duration_minutes,
+        voice_preference: data.voice_preference,
+        video_enabled: data.video_enabled !== false,
+      }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => null);
@@ -194,11 +201,11 @@ export class ApiService {
   static async startSession(
     sessionId: string,
     scenarioId?: string,
-    videoEnabled?: boolean
+    videoEnabled: boolean = true
   ): Promise<InterviewSessionData> {
     const params = new URLSearchParams();
     if (scenarioId) params.append('scenario_id', scenarioId);
-    if (videoEnabled !== undefined) params.append('video_enabled', String(videoEnabled));
+    params.append('video_enabled', String(videoEnabled !== false));
     const url = `${API_BASE_URL}/interviews/${sessionId}/start${params.toString() ? `?${params.toString()}` : ''}`;
     const res = await fetch(url, {
       method: 'POST',

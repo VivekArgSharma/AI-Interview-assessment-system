@@ -85,7 +85,8 @@ def create_interview_session(
         track_id=request.track_id,
         difficulty=request.difficulty,
         duration_minutes=request.duration_minutes,
-        voice_preference=request.voice_preference
+        voice_preference=request.voice_preference,
+        video_enabled=request.video_enabled if request.video_enabled is not None else True
     )
     return InterviewSessionResponse(
         id=session.id,
@@ -95,6 +96,7 @@ def create_interview_session(
         duration_minutes=session.duration_minutes,
         voice_preference=session.voice_preference,
         status=session.status,
+        video_enabled=session.video_enabled,
         current_stage=session.current_stage,
         current_stage_index=session.current_stage_index,
         total_stages=len(session.track.stages or []),
@@ -150,6 +152,7 @@ def get_session_details(
         duration_minutes=session.duration_minutes,
         voice_preference=session.voice_preference,
         status=session.status,
+        video_enabled=session.video_enabled,
         current_stage=session.current_stage,
         current_stage_index=session.current_stage_index,
         total_stages=len(session.track.stages or []),
@@ -213,6 +216,7 @@ def pause_interview_session(
         duration_minutes=session.duration_minutes,
         voice_preference=session.voice_preference,
         status=session.status,
+        video_enabled=session.video_enabled,
         current_stage=session.current_stage,
         current_stage_index=session.current_stage_index,
         total_stages=len(session.track.stages or []),
@@ -238,6 +242,7 @@ def resume_interview_session(
         duration_minutes=session.duration_minutes,
         voice_preference=session.voice_preference,
         status=session.status,
+        video_enabled=session.video_enabled,
         current_stage=session.current_stage,
         current_stage_index=session.current_stage_index,
         total_stages=len(session.track.stages or []),

@@ -191,13 +191,14 @@ export const App: React.FC = () => {
         difficulty: pendingSessionConfig.difficulty,
         duration_minutes: pendingSessionConfig.durationMinutes,
         voice_preference: pendingSessionConfig.voicePreference,
+        video_enabled: consentData.video_consent !== false,
       });
 
       // 2. Start Session with scenario and consent
       const started = await ApiService.startSession(
         session.id,
         pendingSessionConfig.scenarioId,
-        consentData.video_consent
+        consentData.video_consent !== false
       );
 
       setActiveSession(started);
