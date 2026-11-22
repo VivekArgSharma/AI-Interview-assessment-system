@@ -77,6 +77,12 @@ def _auto_migrate_sqlite_columns():
                     conn.commit()
                 except Exception:
                     pass
+            if "coding_metadata" not in cols:
+                try:
+                    conn.execute(text("ALTER TABLE questions ADD COLUMN coding_metadata TEXT DEFAULT '{}'"))
+                    conn.commit()
+                except Exception:
+                    pass
 
         # Check answers table
         if inspector.has_table("answers"):
@@ -85,6 +91,16 @@ def _auto_migrate_sqlite_columns():
                 conn.execute(text("ALTER TABLE answers ADD COLUMN t_start FLOAT DEFAULT 0.0"))
             if "t_end" not in cols:
                 conn.execute(text("ALTER TABLE answers ADD COLUMN t_end FLOAT DEFAULT 0.0"))
+            if "code_submission" not in cols:
+                try:
+                    conn.execute(text("ALTER TABLE answers ADD COLUMN code_submission TEXT"))
+                except Exception:
+                    pass
+            if "code_test_results" not in cols:
+                try:
+                    conn.execute(text("ALTER TABLE answers ADD COLUMN code_test_results TEXT DEFAULT '{}'"))
+                except Exception:
+                    pass
             conn.commit()
 
         # Check rubric_criteria table

@@ -24,14 +24,17 @@ import {
   CheckCircle2,
   XCircle,
   Shield,
-  HelpCircle
+  HelpCircle,
+  PlayCircle
 } from 'lucide-react';
 import {
   InterviewSessionData,
   QuestionData,
   AnswerResponseData,
   CodeRunResult,
-  PersonaChatResult
+  PersonaChatResult,
+  CppExecutionResponse,
+  TestCaseResult
 } from '../types';
 import { ApiService } from '../services/api';
 import { convertBlobToWav, getStudioMicrophoneStream } from '../utils/audio';
@@ -74,7 +77,18 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
 
   // Scenario Workbench state (S1/S2/S3 & N1/N2/N3)
   const scenarioType = session.scenario_id || (session.track_id === 'bug_fixing' ? 'S1' : 'N1');
-  const [activeWorkbenchTab, setActiveWorkbenchTab] = useState<'voice' | 'scenario'>('voice');
+  const [activeWorkbenchTab, setActiveWorkbenchTab] = useState<'voice' | 'scenario' | 'cpp_editor'>('voice');
+  
+  // Integrated C++ Coding Challenge State (Seamlessly part of question flow 1, 2, 3...)
+  const isCodingQuestion = Boolean(
+    currentQuestion?.coding_metadata?.is_coding ||
+    currentQuestion?.coding_metadata?.question_type === 'coding_bug_fix' ||
+    currentQuestion?.coding_metadata?.question_type === 'coding_leetcode'
+  );
+  const [cppCode, setCppCode] = useState<string>('');
+  const [isRunningCpp, setIsRunningCpp] = useState<boolean>(false);
+  const [cppExecutionResult, setCppExecutionResult] = useState<CppExecutionResponse | null>(null);
+  const [selectedTestCaseIdx, setSelectedTestCaseIdx] = useState<number>(0);
   
   // Tech Scenario S1 Code & Test State
   const [codeContent, setCodeContent] = useState<string>(
@@ -171,10 +185,27 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
     };
   }, [isPaused]);
 
-  // Speak initial question upon load
+  // Update state whenever current question changes
   useEffect(() => {
-    if (currentQuestion && currentQuestion.question_text) {
-      speakQuestionText(currentQuestion.question_text);
+    if (currentQuestion) {
+      if (currentQuestion.question_text) {
+        speakQuestionText(currentQuestion.question_text);
+      }
+      const isCoding = Boolean(
+        currentQuestion.coding_metadata?.is_coding ||
+        currentQuestion.coding_metadata?.question_type === 'coding_bug_fix' ||
+        currentQuestion.coding_metadata?.question_type === 'coding_leetcode'
+      );
+      if (isCoding) {
+        setActiveWorkbenchTab('cpp_editor');
+        if (currentQuestion.coding_metadata?.starter_code) {
+          setCppCode(currentQuestion.coding_metadata.starter_code);
+        }
+      } else {
+        setActiveWorkbenchTab('voice');
+      }
+      setCppExecutionResult(null);
+      setSelectedTestCaseIdx(0);
     }
   }, [currentQuestion?.id]);
 
@@ -348,6 +379,78 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
       setErrorMessage(err?.message || 'Failed to submit response. Please retry.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Run Sandboxed C++ Tests (integrated question runner)
+  const handleRunCppTests = async () => {
+    const testCases = currentQuestion?.coding_metadata?.test_cases || [];
+    if (testCases.length === 0) {
+      setErrorMessage('No test cases configured for this question.');
+      return;
+    }
+    setIsRunningCpp(true);
+    setErrorMessage(null);
+    try {
+      const res = await ApiService.runCppCode(cppCode, testCases);
+      setCppExecutionResult(res);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'C++ compilation or execution failed.');
+    } finally {
+      setIsRunningCpp(false);
+    }
+  };
+
+  // Submit C++ Solution and Advance to Next Question
+  const handleSubmitCppSolution = async () => {
+    if (!currentQuestion) return;
+    if (cppCode.trim().length < 10) {
+      setErrorMessage('Please write your C++ implementation before submitting.');
+      return;
+    }
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const resp = await ApiService.submitAnswerText(
+        session.id,
+        currentQuestion.id,
+        `// C++ Submission:\n${cppCode}`,
+        false,
+        cppCode,
+        cppExecutionResult
+      );
+
+      if (resp.next_action === 'completed') {
+        const endRes = await ApiService.endSession(session.id);
+        onSessionFinish(endRes.report_id);
+        return;
+      }
+
+      if (resp.next_question) {
+        setLatestFollowUpMessage(null);
+        setCurrentQuestion(resp.next_question);
+        setTranscript('');
+        setRecordedAudioBlob(null);
+        setRecordDuration(0);
+        speakQuestionText(resp.next_question.question_text);
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Failed to submit C++ solution.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCodeKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const target = e.currentTarget;
+      const start = target.selectionStart;
+      const end = target.selectionEnd;
+      const val = target.value;
+      target.value = val.substring(0, start) + '    ' + val.substring(end);
+      target.selectionStart = target.selectionEnd = start + 4;
+      setCppCode(target.value);
     }
   };
 
@@ -544,7 +647,7 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
       {/* Main Grid: Interviewer + Console / Scenario Workbench */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: AI Interviewer & Camera Preview */}
-        <div className="lg:col-span-5 space-y-6">
+        <div className={`${isCodingQuestion ? 'lg:col-span-4' : 'lg:col-span-5'} space-y-6`}>
           {/* AI Voice Avatar Card */}
           <div className="bg-white border border-stone-200 rounded-none p-6 shadow-xs">
             <div className="flex items-center justify-between mb-4">
@@ -642,36 +745,307 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
           </div>
         </div>
 
-        {/* Right Column: Dynamic Workspace (Voice Response vs Scenario Workbench) */}
-        <div className="lg:col-span-7 space-y-6">
+        {/* Right Column: Dynamic Workspace (C++ Code Studio vs Voice Response vs Scenario Workbench) */}
+        <div className={`${isCodingQuestion ? 'lg:col-span-8' : 'lg:col-span-7'} space-y-6`}>
           {/* Mode Switcher Tabs */}
           <div className="flex items-center justify-between bg-stone-100 p-1 rounded-none border border-stone-200">
             <div className="flex items-center gap-1">
-              <button
-                onClick={() => setActiveWorkbenchTab('voice')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-none text-xs font-bold uppercase tracking-wider transition-all ${
-                  activeWorkbenchTab === 'voice'
-                    ? 'bg-white text-orange-700 shadow-xs border border-stone-200'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                <Mic className="w-4 h-4 text-orange-600" />
-                <span>Voice Answer Console</span>
-              </button>
+              {isCodingQuestion ? (
+                <>
+                  <button
+                    onClick={() => setActiveWorkbenchTab('cpp_editor')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-none text-xs font-bold uppercase tracking-wider transition-all ${
+                      activeWorkbenchTab === 'cpp_editor'
+                        ? 'bg-white text-orange-700 shadow-xs border border-stone-200'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <Terminal className="w-4 h-4 text-orange-600" />
+                    <span>C++ Code Studio</span>
+                  </button>
 
-              <button
-                onClick={() => setActiveWorkbenchTab('scenario')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-none text-xs font-bold uppercase tracking-wider transition-all ${
-                  activeWorkbenchTab === 'scenario'
-                    ? 'bg-white text-orange-700 shadow-xs border border-stone-200'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                <Code className="w-4 h-4 text-orange-600" />
-                <span>Scenario Workbench ({scenarioType})</span>
-              </button>
+                  <button
+                    onClick={() => setActiveWorkbenchTab('voice')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-none text-xs font-bold uppercase tracking-wider transition-all ${
+                      activeWorkbenchTab === 'voice'
+                        ? 'bg-white text-orange-700 shadow-xs border border-stone-200'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <Mic className="w-4 h-4 text-orange-600" />
+                    <span>Voice Audio Notes</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setActiveWorkbenchTab('voice')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-none text-xs font-bold uppercase tracking-wider transition-all ${
+                      activeWorkbenchTab === 'voice'
+                        ? 'bg-white text-orange-700 shadow-xs border border-stone-200'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <Mic className="w-4 h-4 text-orange-600" />
+                    <span>Voice Answer Console</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveWorkbenchTab('scenario')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-none text-xs font-bold uppercase tracking-wider transition-all ${
+                      activeWorkbenchTab === 'scenario'
+                        ? 'bg-white text-orange-700 shadow-xs border border-stone-200'
+                        : 'text-stone-600 hover:text-stone-900'
+                    }`}
+                  >
+                    <Code className="w-4 h-4 text-orange-600" />
+                    <span>Scenario Workbench ({scenarioType})</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
+
+          {/* TAB: Integrated C++ Coding Studio */}
+          {activeWorkbenchTab === 'cpp_editor' && (
+            <div className="bg-white border border-stone-200 rounded-none p-6 shadow-xs space-y-6">
+              {/* C++ Studio Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-stone-200 gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-stone-900 text-white flex items-center justify-center rounded-none">
+                    <Terminal className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-stone-900">
+                        {currentQuestion?.coding_metadata?.question_type === 'coding_bug_fix'
+                          ? 'C++ Bug Fix Challenge'
+                          : 'C++ Algorithmic LeetCode Problem'}
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 bg-orange-100 text-orange-800 font-bold border border-orange-200">
+                        GCC 15 • C++20
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      Implement your solution in C++ and verify against the automated test cases.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {currentQuestion?.coding_metadata?.starter_code && (
+                    <button
+                      type="button"
+                      onClick={() => setCppCode(currentQuestion.coding_metadata!.starter_code || '')}
+                      className="px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold uppercase tracking-wider border border-stone-200 flex items-center gap-1.5 transition-colors rounded-none"
+                      title="Reset code to original starter code"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Reset</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleRunCppTests}
+                    disabled={isRunningCpp}
+                    className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-xs transition-colors rounded-none disabled:opacity-50"
+                  >
+                    {isRunningCpp ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                        <span>Compiling & Running...</span>
+                      </>
+                    ) : (
+                      <>
+                        <PlayCircle className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Run C++ Tests</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Code Editor */}
+              <div className="border border-stone-800 rounded-none bg-stone-950 overflow-hidden shadow-inner">
+                <div className="px-4 py-2 bg-stone-900 border-b border-stone-800 flex items-center justify-between text-xs text-stone-400 font-mono">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block" />
+                    <span>solution.cpp (C++20)</span>
+                  </span>
+                  <span className="text-[11px] text-stone-500">Press Tab for 4-space indent</span>
+                </div>
+                <textarea
+                  value={cppCode}
+                  onChange={(e) => setCppCode(e.target.value)}
+                  onKeyDown={handleCodeKeyDown}
+                  rows={14}
+                  spellCheck={false}
+                  className="w-full bg-stone-950 text-emerald-400 font-mono text-xs p-4 focus:outline-none resize-y leading-relaxed"
+                  placeholder="// Write your C++ solution here..."
+                />
+              </div>
+
+              {/* Test Cases & Execution Results Panel */}
+              <div className="border border-stone-200 bg-stone-50 rounded-none p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-stone-800">
+                      Test Cases ({(currentQuestion?.coding_metadata?.test_cases || []).length})
+                    </span>
+                    {cppExecutionResult && (
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 border ${
+                          cppExecutionResult.all_passed
+                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                            : 'bg-rose-100 text-rose-800 border-rose-300'
+                        }`}
+                      >
+                        {cppExecutionResult.all_passed
+                          ? `✓ All ${cppExecutionResult.passed_tests}/${cppExecutionResult.total_tests} Passed`
+                          : `✗ ${cppExecutionResult.passed_tests}/${cppExecutionResult.total_tests} Passed`}
+                      </span>
+                    )}
+                  </div>
+
+                  {cppExecutionResult && (
+                    <span className="text-[11px] font-mono text-stone-500 font-bold">
+                      Total Runtime: {cppExecutionResult.results.reduce((acc, r) => acc + (r.runtime_ms || 0), 0)}ms
+                    </span>
+                  )}
+                </div>
+
+                {/* Test Case Selection Pills */}
+                <div className="flex flex-wrap gap-2">
+                  {(currentQuestion?.coding_metadata?.test_cases || []).map((_, tcIdx) => {
+                    const tcResult = cppExecutionResult?.results?.[tcIdx];
+                    return (
+                      <button
+                        key={tcIdx}
+                        type="button"
+                        onClick={() => setSelectedTestCaseIdx(tcIdx)}
+                        className={`px-3 py-1.5 text-xs font-mono font-bold flex items-center gap-1.5 border transition-all rounded-none ${
+                          selectedTestCaseIdx === tcIdx
+                            ? 'bg-white border-orange-500 text-stone-900 shadow-xs ring-1 ring-orange-500'
+                            : 'bg-stone-100 border-stone-200 text-stone-600 hover:bg-stone-200'
+                        }`}
+                      >
+                        <span>Case {tcIdx + 1}</span>
+                        {tcResult && (
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              tcResult.passed ? 'bg-emerald-500' : 'bg-rose-500'
+                            }`}
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Selected Test Case Inspection */}
+                {(() => {
+                  const tc = (currentQuestion?.coding_metadata?.test_cases || [])[selectedTestCaseIdx];
+                  const tcResult = cppExecutionResult?.results?.[selectedTestCaseIdx];
+                  if (!tc) return null;
+                  return (
+                    <div className="bg-white border border-stone-200 p-3.5 space-y-3 font-mono text-xs">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold uppercase text-stone-500 block font-sans">
+                            Input (stdin):
+                          </span>
+                          <div className="p-2.5 bg-stone-100 border border-stone-200 text-stone-800 whitespace-pre-wrap min-h-[40px]">
+                            {tc.input || '(empty input)'}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold uppercase text-stone-500 block font-sans">
+                            Expected Output (stdout):
+                          </span>
+                          <div className="p-2.5 bg-stone-100 border border-stone-200 text-stone-800 whitespace-pre-wrap min-h-[40px]">
+                            {tc.expected_output}
+                          </div>
+                        </div>
+                      </div>
+
+                      {tcResult && (
+                        <div className="space-y-1 pt-2 border-t border-stone-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold uppercase text-stone-500 font-sans">
+                              Your Actual Output:
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold uppercase px-2 py-0.5 ${
+                                tcResult.passed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                              }`}
+                            >
+                              {tcResult.passed ? '✓ PASSED' : '✗ FAILED'} ({tcResult.runtime_ms}ms)
+                            </span>
+                          </div>
+                          <div
+                            className={`p-2.5 border whitespace-pre-wrap ${
+                              tcResult.passed
+                                ? 'bg-emerald-50/50 border-emerald-200 text-emerald-900'
+                                : 'bg-rose-50/50 border-rose-200 text-rose-900'
+                            }`}
+                          >
+                            {tcResult.actual_output || '(no stdout output)'}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Compiler error output if any */}
+                {cppExecutionResult && !cppExecutionResult.compilation_success && (
+                  <div className="p-3.5 bg-stone-900 border border-rose-600 text-rose-400 font-mono text-xs space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-rose-300 block font-sans">
+                      Compiler Diagnostics (g++):
+                    </span>
+                    <pre className="whitespace-pre-wrap overflow-x-auto text-[11px]">
+                      {cppExecutionResult.compiler_output}
+                    </pre>
+                  </div>
+                )}
+              </div>
+
+              {/* Submission Footer */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 gap-4">
+                <p className="text-xs text-stone-500">
+                  Your code and automated test results will be evaluated and included in your final performance report.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={handleSubmitCppSolution}
+                  disabled={isSubmitting || cppCode.trim().length < 10}
+                  className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-none text-xs font-bold uppercase tracking-wider bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs disabled:opacity-40 transition-all shrink-0"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Submitting C++ Solution...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Submit C++ Solution & Next Question</span>
+                      <Send className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {errorMessage && (
+                <div className="p-4 bg-rose-50 border border-rose-200 rounded-none text-xs text-rose-700 flex items-center gap-2.5">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* TAB 1: Voice Response Console */}
           {activeWorkbenchTab === 'voice' && (

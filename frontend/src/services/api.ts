@@ -257,7 +257,9 @@ export class ApiService {
     sessionId: string,
     questionId: string,
     transcript: string,
-    isEdited: boolean = false
+    isEdited: boolean = false,
+    codeSubmission?: string,
+    codeTestResults?: any
   ): Promise<AnswerResponseData> {
     const res = await fetch(`${API_BASE_URL}/interviews/${sessionId}/answers`, {
       method: 'POST',
@@ -266,11 +268,44 @@ export class ApiService {
         question_id: questionId,
         transcript,
         is_edited: isEdited,
+        code_submission: codeSubmission,
+        code_test_results: codeTestResults,
       }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => null);
       throw new Error(err?.detail || 'Failed to submit answer');
+    }
+    return res.json();
+  }
+
+  static async runCppCode(
+    code: string,
+    testCases: Array<{ input: string; expected_output: string }>,
+    timeoutSeconds: number = 4.0
+  ): Promise<any> {
+    const res = await fetch(`${API_BASE_URL}/code/run-cpp`, {
+      method: 'POST',
+      headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({
+        code,
+        test_cases: testCases,
+        timeout_seconds: timeoutSeconds,
+      }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.detail || 'Failed to execute C++ code');
+    }
+    return res.json();
+  }
+
+  static async getSampleCodingChallenges(): Promise<any> {
+    const res = await fetch(`${API_BASE_URL}/code/sample-challenges`, {
+      headers: this.getHeaders(),
+    });
+    if (!res.ok) {
+      throw new Error('Failed to load sample coding challenges');
     }
     return res.json();
   }

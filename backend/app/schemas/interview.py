@@ -74,11 +74,12 @@ class InterviewCreateRequest(BaseModel):
 class QuestionResponse(BaseModel):
     id: str
     question_text: str
-    question_type: str  # initial, follow_up
+    question_type: str  # initial, follow_up, coding_bug_fix, coding_leetcode
     sequence_number: int
     interview_stage: str
     context_notes: Optional[str] = None
     expected_concepts: List[str] = []
+    coding_metadata: Optional[Dict[str, Any]] = None
     model_config = ConfigDict(from_attributes=True)
 
 class InterviewSessionResponse(BaseModel):
@@ -107,8 +108,10 @@ class InterviewSessionResponse(BaseModel):
 
 class AnswerSubmitRequest(BaseModel):
     question_id: str
-    transcript: str = Field(min_length=5, max_length=15000)
+    transcript: str = Field(default="", max_length=50000)
     is_edited: bool = False
+    code_submission: Optional[str] = None
+    code_test_results: Optional[Dict[str, Any]] = None
 
 class CriterionAssessmentResult(BaseModel):
     criterion_key: str

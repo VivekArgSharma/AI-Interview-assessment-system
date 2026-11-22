@@ -26,11 +26,18 @@ router = APIRouter(prefix="/custom-interviews", tags=["Custom Interviews"])
 
 # ----------------- Request / Response Schemas -----------------
 
+class CustomTestCase(BaseModel):
+    input: str = Field(default="", description="Standard input for test case")
+    expected_output: str = Field(default="", description="Expected standard output")
+
 class CustomQuestionInput(BaseModel):
-    stage: str = Field(..., description="Stage name or category, e.g. 'Defect Origin Triage' or 'Objection Handling'")
-    question_text: str = Field(..., description="The interview question")
-    correct_answer: str = Field(..., description="The reference / model answer containing the correct concepts")
+    stage: str = Field(..., description="Stage name or category, e.g. 'Defect Origin Triage' or 'Live C++ Debugging'")
+    question_text: str = Field(..., description="The interview question or problem statement")
+    question_type: str = Field(default="verbal", description="'verbal', 'coding_bug_fix', or 'coding_leetcode'")
+    correct_answer: str = Field(default="", description="The reference / model answer or correct C++ solution")
     key_concepts: List[str] = Field(default_factory=list, description="Core keywords/concepts expected in the answer")
+    starter_code: Optional[str] = Field(default="", description="Starter C++ code (buggy code for bug fix, boilerplate for leetcode)")
+    test_cases: List[CustomTestCase] = Field(default_factory=list, description="C++ test cases with inputs and expected outputs")
 
 class CustomInterviewCreateRequest(BaseModel):
     title: str = Field(..., min_length=3, max_length=200, description="Interview title")
@@ -324,15 +331,30 @@ def start_custom_interview_by_invite(
     # 2. Populate Questions with Interviewer's Reference Answers
     created_questions = []
     for idx, q_data in enumerate(role.custom_questions):
+        q_type = q_data.get("question_type", "verbal")
+        starter_code = q_data.get("starter_code", "")
+        test_cases = q_data.get("test_cases", [])
+        
+        coding_meta = {}
+        if q_type in ("coding_bug_fix", "coding_leetcode") or starter_code or test_cases:
+            coding_meta = {
+                "language": "cpp",
+                "type": q_type,
+                "starter_code": starter_code,
+                "correct_code": q_data.get("correct_answer", ""),
+                "test_cases": test_cases
+            }
+
         q = Question(
             session_id=session.id,
             question_text=q_data.get("question_text"),
-            question_type="initial",
+            question_type=q_type if q_type in ("coding_bug_fix", "coding_leetcode") else "initial",
             sequence_number=idx + 1,
             interview_stage=q_data.get("stage", f"Stage {idx + 1}"),
             context_notes=f"Interviewer custom question {idx + 1}",
             reference_answer=q_data.get("correct_answer", ""),
-            expected_concepts=q_data.get("key_concepts", [])
+            expected_concepts=q_data.get("key_concepts", []),
+            coding_metadata=coding_meta
         )
         db.add(q)
         db.flush()
@@ -365,7 +387,8 @@ def start_custom_interview_by_invite(
             "sequence_number": first_q.sequence_number,
             "interview_stage": first_q.interview_stage,
             "context_notes": first_q.context_notes,
-            "expected_concepts": first_q.expected_concepts
+            "expected_concepts": first_q.expected_concepts,
+            "coding_metadata": first_q.coding_metadata
         }
     }
 

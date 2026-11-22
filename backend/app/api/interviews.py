@@ -278,7 +278,9 @@ def submit_answer_text(
         user=user,
         question_id=request.question_id,
         transcript=request.transcript,
-        is_edited=request.is_edited
+        is_edited=request.is_edited,
+        code_submission=request.code_submission,
+        code_test_results=request.code_test_results
     )
     return AnswerResponse(
         answer_id=result["answer_id"],
@@ -463,6 +465,9 @@ def get_session_report(
             "speech_coach_feedback": coach_data.get("speech_coach_feedback", "Articulate key concepts with confident pacing (135-145 WPM)."),
             "audio_duration_seconds": a.audio_duration_seconds,
             "has_audio": bool(a.audio_storage_key),
+            "code_submission": a.code_submission,
+            "code_test_results": a.code_test_results,
+            "coding_metadata": a.question.coding_metadata if a.question else None,
             "assessments": [
                 {
                     "criterion_name": ass.criterion.criterion_name if ass.criterion else "",

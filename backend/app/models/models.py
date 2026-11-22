@@ -166,6 +166,7 @@ class Question(Base):
     context_notes = Column(Text, nullable=True)
     expected_concepts = Column(JSON, default=list)
     reference_answer = Column(Text, nullable=True)
+    coding_metadata = Column(JSON, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     session = relationship("InterviewSession", back_populates="questions")
@@ -185,6 +186,8 @@ class Answer(Base):
     t_end = Column(Float, default=0.0, nullable=False)
     transcription_status = Column(String(50), default="success", nullable=False)
     assessment_status = Column(String(50), default="completed", nullable=False)
+    code_submission = Column(Text, nullable=True)
+    code_test_results = Column(JSON, default=dict)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     session = relationship("InterviewSession", back_populates="answers")

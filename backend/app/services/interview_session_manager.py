@@ -114,6 +114,16 @@ class InterviewSessionManager:
         if session.status not in ["in_progress", "created"]:
             return None
 
+        if session.mode == "custom_interview":
+            q_list = (
+                db.query(Question)
+                .filter(Question.session_id == session.id, Question.question_type != "follow_up")
+                .order_by(Question.sequence_number)
+                .all()
+            )
+            if q_list and session.current_stage_index < len(q_list):
+                return q_list[session.current_stage_index]
+
         # Return latest question
         return db.query(Question).filter(Question.session_id == session.id).order_by(Question.sequence_number.desc()).first()
 
@@ -127,7 +137,9 @@ class InterviewSessionManager:
         audio_analysis: Optional[Dict[str, Any]] = None,
         audio_duration_seconds: float = 0.0,
         audio_storage_key: Optional[str] = None,
-        is_edited: bool = False
+        is_edited: bool = False,
+        code_submission: Optional[str] = None,
+        code_test_results: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         session = self._get_session_with_ownership(db, session_id, user)
         if session.status != "in_progress":
@@ -143,8 +155,12 @@ class InterviewSessionManager:
                 detail="Question not found in this interview session."
             )
 
-        clean_transcript = transcript.strip()
-        if len(clean_transcript) < 5:
+        clean_transcript = transcript.strip() if transcript else ""
+        if code_submission and len(clean_transcript) < 5:
+            passed = code_test_results.get("passed_tests", 0) if isinstance(code_test_results, dict) else 0
+            total = code_test_results.get("total_tests", 0) if isinstance(code_test_results, dict) else 0
+            clean_transcript = f"[C++ Code Submission: {passed}/{total} tests passed]\n" + clean_transcript
+        elif len(clean_transcript) < 5 and not code_submission:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="Answer transcript is too short (min 5 characters)."
@@ -156,6 +172,8 @@ class InterviewSessionManager:
             question_id=question.id,
             transcript=clean_transcript,
             edited_transcript=clean_transcript if is_edited else None,
+            code_submission=code_submission,
+            code_test_results=code_test_results or {},
             audio_storage_key=audio_storage_key,
             audio_duration_seconds=audio_duration_seconds,
             transcription_status="success",
@@ -242,7 +260,7 @@ class InterviewSessionManager:
         # Check if this session has pre-seeded custom questions (custom interview mode)
         custom_q_list = (
             db.query(Question)
-            .filter(Question.session_id == session.id, Question.question_type == "initial")
+            .filter(Question.session_id == session.id, Question.question_type != "follow_up")
             .order_by(Question.sequence_number)
             .all()
         )

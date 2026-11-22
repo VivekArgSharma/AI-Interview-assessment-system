@@ -427,20 +427,139 @@ def seed_default_data():
                 {
                     "sequence_number": 1,
                     "stage": "Architecture & Idempotency",
+                    "question_type": "verbal",
                     "question_text": "An API service starts returning duplicate records during network timeouts and retry storms. How do you isolate and resolve the root cause?",
                     "correct_answer": "I isolate between the database and in-memory accumulator by inspecting telemetry logs. To prevent duplicate execution on retry storms, I enforce an idempotency key using Redis SETNX with TTL and ensure atomic deduplication.",
                     "key_concepts": ["idempotency key", "Redis SETNX", "retry storms", "TTL", "atomic deduplication"]
                 },
                 {
                     "sequence_number": 2,
-                    "stage": "Distributed Concurrency",
-                    "question_text": "How would you design a distributed locking mechanism to prevent two worker nodes from processing the same event?",
-                    "correct_answer": "I would use Redis Redlock or Postgres advisory locks with lease timeouts and fencing tokens to ensure only one worker processes an event, preventing stale node overrides.",
-                    "key_concepts": ["distributed lock", "fencing token", "lease timeout", "Redlock", "stale override"]
+                    "stage": "Live C++ Debugging (Bug Fix)",
+                    "question_type": "coding_bug_fix",
+                    "question_text": "The C++ function below is supposed to filter out all records with values less than a threshold. However, it contains an iterator invalidation bug and an off-by-one bounds check causing memory crashes. Fix the function so all test cases execute cleanly.",
+                    "correct_answer": (
+                        "#include <iostream>\n"
+                        "#include <vector>\n\n"
+                        "std::vector<int> removeStaleAndDeduplicate(const std::vector<int>& records, int threshold) {\n"
+                        "    std::vector<int> result;\n"
+                        "    for (int val : records) {\n"
+                        "        if (val >= threshold) {\n"
+                        "            result.push_back(val);\n"
+                        "        }\n"
+                        "    }\n"
+                        "    return result;\n"
+                        "}\n\n"
+                        "int main() {\n"
+                        "    int n, threshold;\n"
+                        "    if (!(std::cin >> n >> threshold)) return 0;\n"
+                        "    std::vector<int> records(n);\n"
+                        "    for (int i = 0; i < n; ++i) {\n"
+                        "        std::cin >> records[i];\n"
+                        "    }\n"
+                        "    std::vector<int> filtered = removeStaleAndDeduplicate(records, threshold);\n"
+                        "    for (size_t i = 0; i < filtered.size(); ++i) {\n"
+                        "        std::cout << filtered[i] << (i + 1 == filtered.size() ? \"\" : \" \");\n"
+                        "    }\n"
+                        "    std::cout << \"\\n\";\n"
+                        "    return 0;\n"
+                        "}\n"
+                    ),
+                    "starter_code": (
+                        "#include <iostream>\n"
+                        "#include <vector>\n\n"
+                        "// BUG: Erasing elements while incrementing iterator causes skips and out-of-bounds\n"
+                        "std::vector<int> removeStaleAndDeduplicate(std::vector<int>& records, int threshold) {\n"
+                        "    std::vector<int> result = records;\n"
+                        "    for (size_t i = 0; i <= result.size(); ++i) {\n"
+                        "        if (i < result.size() && result[i] < threshold) {\n"
+                        "            result.erase(result.begin() + i);\n"
+                        "        }\n"
+                        "    }\n"
+                        "    return result;\n"
+                        "}\n\n"
+                        "int main() {\n"
+                        "    int n, threshold;\n"
+                        "    if (!(std::cin >> n >> threshold)) return 0;\n"
+                        "    std::vector<int> records(n);\n"
+                        "    for (int i = 0; i < n; ++i) {\n"
+                        "        std::cin >> records[i];\n"
+                        "    }\n"
+                        "    std::vector<int> filtered = removeStaleAndDeduplicate(records, threshold);\n"
+                        "    for (size_t i = 0; i < filtered.size(); ++i) {\n"
+                        "        std::cout << filtered[i] << (i + 1 == filtered.size() ? \"\" : \" \");\n"
+                        "    }\n"
+                        "    std::cout << \"\\n\";\n"
+                        "    return 0;\n"
+                        "}\n"
+                    ),
+                    "test_cases": [
+                        {"input": "5 10\n5 12 8 15 20", "expected_output": "12 15 20"},
+                        {"input": "4 25\n5 10 15 20", "expected_output": ""},
+                        {"input": "3 1\n1 2 3", "expected_output": "1 2 3"}
+                    ],
+                    "key_concepts": ["iterator invalidation", "vector erase", "off-by-one", "C++ memory safety"]
                 },
                 {
                     "sequence_number": 3,
+                    "stage": "Algorithms & Data Structures (LeetCode)",
+                    "question_type": "coding_leetcode",
+                    "question_text": "Given an integer array nums, find the contiguous subarray with the largest sum and return its sum (Kadane's Algorithm). Implement an optimal O(N) time and O(1) space solution in C++.",
+                    "correct_answer": (
+                        "#include <iostream>\n"
+                        "#include <vector>\n"
+                        "#include <algorithm>\n\n"
+                        "long long maxSubArraySum(const std::vector<int>& nums) {\n"
+                        "    if (nums.empty()) return 0;\n"
+                        "    long long current_sum = nums[0];\n"
+                        "    long long max_sum = nums[0];\n"
+                        "    for (size_t i = 1; i < nums.size(); ++i) {\n"
+                        "        current_sum = std::max((long long)nums[i], current_sum + nums[i]);\n"
+                        "        max_sum = std::max(max_sum, current_sum);\n"
+                        "    }\n"
+                        "    return max_sum;\n"
+                        "}\n\n"
+                        "int main() {\n"
+                        "    int n;\n"
+                        "    if (!(std::cin >> n)) return 0;\n"
+                        "    std::vector<int> nums(n);\n"
+                        "    for (int i = 0; i < n; ++i) {\n"
+                        "        std::cin >> nums[i];\n"
+                        "    }\n"
+                        "    std::cout << maxSubArraySum(nums) << \"\\n\";\n"
+                        "    return 0;\n"
+                        "}\n"
+                    ),
+                    "starter_code": (
+                        "#include <iostream>\n"
+                        "#include <vector>\n"
+                        "#include <algorithm>\n\n"
+                        "// Implement Kadane's Algorithm in C++: O(N) time, O(1) auxiliary space\n"
+                        "long long maxSubArraySum(const std::vector<int>& nums) {\n"
+                        "    // TODO: Write your solution here\n"
+                        "    return 0;\n"
+                        "}\n\n"
+                        "int main() {\n"
+                        "    int n;\n"
+                        "    if (!(std::cin >> n)) return 0;\n"
+                        "    std::vector<int> nums(n);\n"
+                        "    for (int i = 0; i < n; ++i) {\n"
+                        "        std::cin >> nums[i];\n"
+                        "    }\n"
+                        "    std::cout << maxSubArraySum(nums) << \"\\n\";\n"
+                        "    return 0;\n"
+                        "}\n"
+                    ),
+                    "test_cases": [
+                        {"input": "9\n-2 1 -3 4 -1 2 1 -5 4", "expected_output": "6"},
+                        {"input": "5\n5 4 -1 7 8", "expected_output": "23"},
+                        {"input": "1\n-1", "expected_output": "-1"}
+                    ],
+                    "key_concepts": ["Kadane's algorithm", "dynamic programming", "O(N) time", "O(1) space", "greedy"]
+                },
+                {
+                    "sequence_number": 4,
                     "stage": "Rollout & Safeguards",
+                    "question_type": "verbal",
                     "question_text": "What production rollback safeguards and telemetry alerts do you establish before deploying a distributed bug fix?",
                     "correct_answer": "I employ canary deployment at 10% traffic, monitor p99 latency and 5xx error thresholds on Datadog, and configure automated circuit breaker rollbacks.",
                     "key_concepts": ["canary deployment", "p99 latency", "circuit breaker", "automated rollback"]
@@ -493,6 +612,8 @@ def _seed_premade_custom_interview(db, recruiter, role_id: str, title: str, trac
     """Seeds a pre-configured interviewer role with custom questions and model answers."""
     existing = db.query(RoleModel).filter(RoleModel.id == role_id).first()
     if existing:
+        existing.custom_questions = questions
+        db.flush()
         return existing
     
     role = RoleModel(
@@ -564,22 +685,122 @@ def _seed_completed_5stage_interview(db, user, track_id: str, session_id: str, s
                 "duration": 37.0,
                 "wpm": 140.0,
                 "score": 4.2,
+                "question_type": "initial"
             },
             {
-                "stage": "Root Cause Hypothesis",
-                "question": "Looking at the worker code, the accumulator dictionary does not reset on network timeout retry. How do you refactor for idempotency?",
-                "transcript": "I would enforce an idempotency key using Redis SETNX and ensure the accumulator set deduplicates record IDs so duplicate retry storms don't increment counts twice.",
-                "duration": 39.0,
-                "wpm": 144.0,
-                "score": 4.4,
-            },
-            {
-                "stage": "Automated Sandbox Testing",
-                "question": "How do you construct a regression test to prove the retry storm no longer causes duplicate entries?",
-                "transcript": "I write an automated unit test mocking the HTTP post with ConnectionError on the first two attempts and success on the third, asserting that the output set count equals exactly the input length.",
-                "duration": 42.0,
-                "wpm": 138.0,
+                "stage": "Live C++ Debugging (Bug Fix)",
+                "question": "The C++ event deduplicator contains an iterator invalidation bug and off-by-one error causing segmentation faults. Refactor it to ensure safe memory access and passing test cases.",
+                "transcript": "I identified that vector::erase was invalidating the iteration index, and the loop condition i <= result.size() caused out-of-bounds reads. I refactored it to build an allocated result vector preserving elements >= threshold.",
+                "duration": 45.0,
+                "wpm": 139.0,
                 "score": 4.6,
+                "question_type": "coding_bug_fix",
+                "code_submission": (
+                    "#include <iostream>\n"
+                    "#include <vector>\n\n"
+                    "std::vector<int> removeStaleAndDeduplicate(const std::vector<int>& records, int threshold) {\n"
+                    "    std::vector<int> result;\n"
+                    "    for (int val : records) {\n"
+                    "        if (val >= threshold) result.push_back(val);\n"
+                    "    }\n"
+                    "    return result;\n"
+                    "}\n\n"
+                    "int main() {\n"
+                    "    int n, threshold;\n"
+                    "    if (!(std::cin >> n >> threshold)) return 0;\n"
+                    "    std::vector<int> records(n);\n"
+                    "    for (int i = 0; i < n; ++i) std::cin >> records[i];\n"
+                    "    std::vector<int> filtered = removeStaleAndDeduplicate(records, threshold);\n"
+                    "    for (size_t i = 0; i < filtered.size(); ++i) {\n"
+                    "        std::cout << filtered[i] << (i + 1 == filtered.size() ? \"\" : \" \");\n"
+                    "    }\n"
+                    "    std::cout << \"\\n\";\n"
+                    "    return 0;\n"
+                    "}\n"
+                ),
+                "code_test_results": {
+                    "compilation_success": True,
+                    "total_tests": 3,
+                    "passed_tests": 3,
+                    "all_passed": True
+                },
+                "coding_metadata": {
+                    "language": "cpp",
+                    "type": "coding_bug_fix",
+                    "starter_code": (
+                        "#include <iostream>\n"
+                        "#include <vector>\n\n"
+                        "std::vector<int> removeStaleAndDeduplicate(std::vector<int>& records, int threshold) {\n"
+                        "    std::vector<int> result = records;\n"
+                        "    for (size_t i = 0; i <= result.size(); ++i) {\n"
+                        "        if (i < result.size() && result[i] < threshold) {\n"
+                        "            result.erase(result.begin() + i);\n"
+                        "        }\n"
+                        "    }\n"
+                        "    return result;\n"
+                        "}\n"
+                    ),
+                    "test_cases": [
+                        {"input": "5 10\n5 12 8 15 20", "expected_output": "12 15 20"},
+                        {"input": "4 25\n5 10 15 20", "expected_output": ""},
+                        {"input": "3 1\n1 2 3", "expected_output": "1 2 3"}
+                    ]
+                }
+            },
+            {
+                "stage": "Algorithms & Data Structures (LeetCode)",
+                "question": "Implement an optimal O(N) time and O(1) space solution in C++ to find the maximum contiguous subarray sum (Kadane's Algorithm).",
+                "transcript": "I implemented Kadane's algorithm by maintaining current_sum and max_sum in a single pass. If current_sum drops below nums[i], we restart the subarray at nums[i], achieving optimal O(N) time and O(1) auxiliary space.",
+                "duration": 48.0,
+                "wpm": 142.0,
+                "score": 4.7,
+                "question_type": "coding_leetcode",
+                "code_submission": (
+                    "#include <iostream>\n"
+                    "#include <vector>\n"
+                    "#include <algorithm>\n\n"
+                    "long long maxSubArraySum(const std::vector<int>& nums) {\n"
+                    "    if (nums.empty()) return 0;\n"
+                    "    long long current_sum = nums[0];\n"
+                    "    long long max_sum = nums[0];\n"
+                    "    for (size_t i = 1; i < nums.size(); ++i) {\n"
+                    "        current_sum = std::max((long long)nums[i], current_sum + nums[i]);\n"
+                    "        max_sum = std::max(max_sum, current_sum);\n"
+                    "    }\n"
+                    "    return max_sum;\n"
+                    "}\n\n"
+                    "int main() {\n"
+                    "    int n;\n"
+                    "    if (!(std::cin >> n)) return 0;\n"
+                    "    std::vector<int> nums(n);\n"
+                    "    for (int i = 0; i < n; ++i) std::cin >> nums[i];\n"
+                    "    std::cout << maxSubArraySum(nums) << \"\\n\";\n"
+                    "    return 0;\n"
+                    "}\n"
+                ),
+                "code_test_results": {
+                    "compilation_success": True,
+                    "total_tests": 3,
+                    "passed_tests": 3,
+                    "all_passed": True
+                },
+                "coding_metadata": {
+                    "language": "cpp",
+                    "type": "coding_leetcode",
+                    "starter_code": (
+                        "#include <iostream>\n"
+                        "#include <vector>\n\n"
+                        "long long maxSubArraySum(const std::vector<int>& nums) {\n"
+                        "    // Write Kadane's Algorithm in C++\n"
+                        "    return 0;\n"
+                        "}\n"
+                    ),
+                    "test_cases": [
+                        {"input": "9\n-2 1 -3 4 -1 2 1 -5 4", "expected_output": "6"},
+                        {"input": "5\n5 4 -1 7 8", "expected_output": "23"},
+                        {"input": "1\n-1", "expected_output": "-1"}
+                    ]
+                }
             },
             {
                 "stage": "Incident Trade-off Decision",
@@ -588,6 +809,7 @@ def _seed_completed_5stage_interview(db, user, track_id: str, session_id: str, s
                 "duration": 35.0,
                 "wpm": 141.0,
                 "score": 4.3,
+                "question_type": "initial"
             },
             {
                 "stage": "Post-Mortem & Rollout",
@@ -596,6 +818,7 @@ def _seed_completed_5stage_interview(db, user, track_id: str, session_id: str, s
                 "duration": 33.0,
                 "wpm": 139.0,
                 "score": 4.5,
+                "question_type": "initial"
             }
         ]
         summary_text = "Candidate completed all 5 stages of the Software Engineering Bug-Fixing scenario with disciplined technical reasoning, clear concurrency trade-offs, and calibrated delivery pacing (~140 WPM)."
@@ -658,10 +881,11 @@ def _seed_completed_5stage_interview(db, user, track_id: str, session_id: str, s
         q = Question(
             session_id=session.id,
             question_text=scen["question"],
-            question_type="initial",
+            question_type=scen.get("question_type", "initial"),
             sequence_number=idx + 1,
             interview_stage=scen["stage"],
-            expected_concepts=["idempotency", "trade-offs", "monitoring"] if track_id == "bug_fixing" else ["value", "discovery", "roi"]
+            expected_concepts=["idempotency", "trade-offs", "monitoring"] if track_id == "bug_fixing" else ["value", "discovery", "roi"],
+            coding_metadata=scen.get("coding_metadata", {})
         )
         db.add(q)
         db.flush()
@@ -671,7 +895,9 @@ def _seed_completed_5stage_interview(db, user, track_id: str, session_id: str, s
             question_id=q.id,
             transcript=scen["transcript"],
             audio_duration_seconds=scen["duration"],
-            audio_storage_key=f"benchmark_audio_{track_id}_{idx + 1}"
+            audio_storage_key=f"benchmark_audio_{track_id}_{idx + 1}",
+            code_submission=scen.get("code_submission"),
+            code_test_results=scen.get("code_test_results", {})
         )
         db.add(ans)
         db.flush()

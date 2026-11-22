@@ -18,7 +18,10 @@ import {
   Loader2,
   FileText,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Code,
+  Terminal,
+  MessageSquare
 } from 'lucide-react';
 import { ApiService } from '../services/api';
 
@@ -28,33 +31,161 @@ interface InterviewerStudioPageProps {
   onViewReportById?: (sessionId: string) => void;
 }
 
+interface TestCaseFormItem {
+  id: string;
+  input: string;
+  expected_output: string;
+}
+
 interface QuestionFormItem {
   id: string;
   stage: string;
+  question_type: 'verbal' | 'coding_bug_fix' | 'coding_leetcode';
   question_text: string;
   correct_answer: string;
   key_concepts_text: string;
+  starter_code?: string;
+  test_cases?: TestCaseFormItem[];
 }
 
 const DEFAULT_TECH_QUESTIONS: QuestionFormItem[] = [
   {
     id: '1',
     stage: 'Architecture & Idempotency',
+    question_type: 'verbal',
     question_text: 'An API service starts returning duplicate records during network timeouts and retry storms. How do you isolate and resolve the root cause?',
     correct_answer: 'I isolate between the database and in-memory accumulator by inspecting telemetry logs. To prevent duplicate execution on retry storms, I enforce an idempotency key using Redis SETNX with TTL and ensure atomic deduplication.',
     key_concepts_text: 'idempotency key, Redis SETNX, retry storms, TTL, atomic deduplication'
   },
   {
     id: '2',
-    stage: 'Distributed Concurrency',
-    question_text: 'How would you design a distributed locking mechanism to prevent two worker nodes from processing the same event concurrently?',
-    correct_answer: 'I would use Redis Redlock or Postgres advisory locks with lease timeouts and fencing tokens to ensure only one worker processes an event, preventing stale node overrides.',
-    key_concepts_text: 'distributed lock, fencing token, lease timeout, Redlock, stale override'
+    stage: 'Live C++ Debugging (Bug Fix)',
+    question_type: 'coding_bug_fix',
+    question_text: 'The C++ function below is supposed to filter out all records with values less than a threshold. However, it contains an iterator invalidation bug and an off-by-one bounds check causing memory crashes. Fix the function so all test cases execute cleanly.',
+    starter_code: `#include <iostream>
+#include <vector>
+
+// BUG: Erasing elements while incrementing iterator causes skips and out-of-bounds
+std::vector<int> removeStaleAndDeduplicate(std::vector<int>& records, int threshold) {
+    std::vector<int> result = records;
+    for (size_t i = 0; i <= result.size(); ++i) {
+        if (i < result.size() && result[i] < threshold) {
+            result.erase(result.begin() + i);
+        }
+    }
+    return result;
+}
+
+int main() {
+    int n, threshold;
+    if (!(std::cin >> n >> threshold)) return 0;
+    std::vector<int> records(n);
+    for (int i = 0; i < n; ++i) {
+        std::cin >> records[i];
+    }
+    std::vector<int> filtered = removeStaleAndDeduplicate(records, threshold);
+    for (size_t i = 0; i < filtered.size(); ++i) {
+        std::cout << filtered[i] << (i + 1 == filtered.size() ? "" : " ");
+    }
+    std::cout << "\\n";
+    return 0;
+}`,
+    correct_answer: `#include <iostream>
+#include <vector>
+
+std::vector<int> removeStaleAndDeduplicate(const std::vector<int>& records, int threshold) {
+    std::vector<int> result;
+    for (int val : records) {
+        if (val >= threshold) {
+            result.push_back(val);
+        }
+    }
+    return result;
+}
+
+int main() {
+    int n, threshold;
+    if (!(std::cin >> n >> threshold)) return 0;
+    std::vector<int> records(n);
+    for (int i = 0; i < n; ++i) {
+        std::cin >> records[i];
+    }
+    std::vector<int> filtered = removeStaleAndDeduplicate(records, threshold);
+    for (size_t i = 0; i < filtered.size(); ++i) {
+        std::cout << filtered[i] << (i + 1 == filtered.size() ? "" : " ");
+    }
+    std::cout << "\\n";
+    return 0;
+}`,
+    key_concepts_text: 'iterator invalidation, vector erase, off-by-one, C++ memory safety',
+    test_cases: [
+      { id: 'tc1', input: '5 10\n5 12 8 15 20', expected_output: '12 15 20' },
+      { id: 'tc2', input: '4 25\n5 10 15 20', expected_output: '' },
+      { id: 'tc3', input: '3 1\n1 2 3', expected_output: '1 2 3' }
+    ]
   },
   {
     id: '3',
+    stage: 'Algorithms & Data Structures (LeetCode)',
+    question_type: 'coding_leetcode',
+    question_text: 'Given an integer array nums, find the contiguous subarray with the largest sum and return its sum (Kadane\'s Algorithm). Implement an optimal O(N) time and O(1) space solution in C++.',
+    starter_code: `#include <iostream>
+#include <vector>
+#include <algorithm>
+
+// Implement Kadane's Algorithm in C++: O(N) time, O(1) auxiliary space
+long long maxSubArraySum(const std::vector<int>& nums) {
+    // TODO: Write your solution here
+    return 0;
+}
+
+int main() {
+    int n;
+    if (!(std::cin >> n)) return 0;
+    std::vector<int> nums(n);
+    for (int i = 0; i < n; ++i) {
+        std::cin >> nums[i];
+    }
+    std::cout << maxSubArraySum(nums) << "\\n";
+    return 0;
+}`,
+    correct_answer: `#include <iostream>
+#include <vector>
+#include <algorithm>
+
+long long maxSubArraySum(const std::vector<int>& nums) {
+    if (nums.empty()) return 0;
+    long long current_sum = nums[0];
+    long long max_sum = nums[0];
+    for (size_t i = 1; i < nums.size(); ++i) {
+        current_sum = std::max((long long)nums[i], current_sum + nums[i]);
+        max_sum = std::max(max_sum, current_sum);
+    }
+    return max_sum;
+}
+
+int main() {
+    int n;
+    if (!(std::cin >> n)) return 0;
+    std::vector<int> nums(n);
+    for (int i = 0; i < n; ++i) {
+        std::cin >> nums[i];
+    }
+    std::cout << maxSubArraySum(nums) << "\\n";
+    return 0;
+}`,
+    key_concepts_text: 'Kadane algorithm, dynamic programming, O(N) time, O(1) space',
+    test_cases: [
+      { id: 'tc1', input: '9\n-2 1 -3 4 -1 2 1 -5 4', expected_output: '6' },
+      { id: 'tc2', input: '5\n5 4 -1 7 8', expected_output: '23' },
+      { id: 'tc3', input: '1\n-1', expected_output: '-1' }
+    ]
+  },
+  {
+    id: '4',
     stage: 'Rollout & Safeguards',
-    question_text: 'What production rollout safeguards and telemetry alerts do you establish before deploying a distributed bug fix?',
+    question_type: 'verbal',
+    question_text: 'What production rollback safeguards and telemetry alerts do you establish before deploying a distributed bug fix?',
     correct_answer: 'I employ canary deployment at 10% traffic, monitor p99 latency and 5xx error thresholds on Datadog, and configure automated circuit breaker rollbacks.',
     key_concepts_text: 'canary deployment, p99 latency, circuit breaker, automated rollback'
   }
@@ -64,6 +195,7 @@ const DEFAULT_SALES_QUESTIONS: QuestionFormItem[] = [
   {
     id: '1',
     stage: 'Objection Handling & Pricing',
+    question_type: 'verbal',
     question_text: 'A prospective enterprise buyer says your SaaS platform is 30% more expensive than their incumbent solution. How do you handle this objection?',
     correct_answer: 'I validate their budget boundaries without discounting prematurely, then re-anchor discovery on total cost of ownership and time savings, showing our automation saves 15 hours per engineering sprint.',
     key_concepts_text: 'total cost of ownership, value re-anchoring, ROI, no premature discount'
@@ -71,6 +203,7 @@ const DEFAULT_SALES_QUESTIONS: QuestionFormItem[] = [
   {
     id: '2',
     stage: 'Stakeholder Retraining Fear',
+    question_type: 'verbal',
     question_text: 'An executive stakeholder is hesitant to switch because of the perceived pain of team retraining. How do you address their fear?',
     correct_answer: 'I validate their concern, quantify the weekly friction of their legacy tool, and offer a dedicated concierge migration and shadowing program with zero downtime guarantees.',
     key_concepts_text: 'concierge onboarding, zero downtime, friction quantification, migration support'
@@ -78,6 +211,7 @@ const DEFAULT_SALES_QUESTIONS: QuestionFormItem[] = [
   {
     id: '3',
     stage: 'Mutual Commitment Closing',
+    question_type: 'verbal',
     question_text: 'How do you establish mutual commitment to secure a signed contract before quarter close?',
     correct_answer: 'I anchor the signing deadline directly to the customer\'s internal product launch milestone so any delay in signature directly impacts their own business deliverable.',
     key_concepts_text: 'mutual action plan, go-live milestone, executive sponsor anchor, business deliverable'
@@ -137,6 +271,7 @@ export const InterviewerStudioPage: React.FC<InterviewerStudioPageProps> = ({
       {
         id: newId,
         stage: `Stage ${questions.length + 1}`,
+        question_type: 'verbal',
         question_text: '',
         correct_answer: '',
         key_concepts_text: ''
@@ -149,9 +284,70 @@ export const InterviewerStudioPage: React.FC<InterviewerStudioPageProps> = ({
     setQuestions(questions.filter((_, i) => i !== index));
   };
 
-  const handleQuestionChange = (index: number, field: keyof QuestionFormItem, value: string) => {
+  const handleQuestionChange = (index: number, field: keyof QuestionFormItem, value: any) => {
     const updated = [...questions];
     updated[index] = { ...updated[index], [field]: value };
+    setQuestions(updated);
+  };
+
+  const handleQuestionTypeChange = (index: number, newType: 'verbal' | 'coding_bug_fix' | 'coding_leetcode') => {
+    const updated = [...questions];
+    const current = updated[index];
+    if (newType === 'coding_bug_fix') {
+      current.question_type = 'coding_bug_fix';
+      current.stage = current.stage || 'Live C++ Debugging (Bug Fix)';
+      if (!current.starter_code) {
+        current.starter_code = DEFAULT_TECH_QUESTIONS[1].starter_code;
+        current.correct_answer = DEFAULT_TECH_QUESTIONS[1].correct_answer;
+        current.question_text = current.question_text || DEFAULT_TECH_QUESTIONS[1].question_text;
+        current.test_cases = DEFAULT_TECH_QUESTIONS[1].test_cases;
+      }
+    } else if (newType === 'coding_leetcode') {
+      current.question_type = 'coding_leetcode';
+      current.stage = current.stage || 'Algorithms & Data Structures (LeetCode)';
+      if (!current.starter_code) {
+        current.starter_code = DEFAULT_TECH_QUESTIONS[2].starter_code;
+        current.correct_answer = DEFAULT_TECH_QUESTIONS[2].correct_answer;
+        current.question_text = current.question_text || DEFAULT_TECH_QUESTIONS[2].question_text;
+        current.test_cases = DEFAULT_TECH_QUESTIONS[2].test_cases;
+      }
+    } else {
+      current.question_type = 'verbal';
+    }
+    setQuestions(updated);
+  };
+
+  const handleAddTestCase = (qIdx: number) => {
+    const updated = [...questions];
+    const currentQ = updated[qIdx];
+    const currentTC = currentQ.test_cases || [];
+    currentQ.test_cases = [
+      ...currentTC,
+      { id: `tc_${Date.now()}`, input: '', expected_output: '' }
+    ];
+    setQuestions(updated);
+  };
+
+  const handleRemoveTestCase = (qIdx: number, tcIdx: number) => {
+    const updated = [...questions];
+    const currentQ = updated[qIdx];
+    if (!currentQ.test_cases || currentQ.test_cases.length <= 1) return;
+    currentQ.test_cases = currentQ.test_cases.filter((_, i) => i !== tcIdx);
+    setQuestions(updated);
+  };
+
+  const handleTestCaseChange = (
+    qIdx: number,
+    tcIdx: number,
+    field: 'input' | 'expected_output',
+    val: string
+  ) => {
+    const updated = [...questions];
+    const currentQ = updated[qIdx];
+    if (!currentQ.test_cases) return;
+    const tcList = [...currentQ.test_cases];
+    tcList[tcIdx] = { ...tcList[tcIdx], [field]: val };
+    currentQ.test_cases = tcList;
     setQuestions(updated);
   };
 
@@ -173,6 +369,10 @@ export const InterviewerStudioPage: React.FC<InterviewerStudioPageProps> = ({
         setErrorMsg(`Question #${i + 1} requires a model correct answer for semantic comparison.`);
         return;
       }
+      if (questions[i].question_type !== 'verbal' && (!questions[i].test_cases || questions[i].test_cases!.length === 0)) {
+        setErrorMsg(`Coding Question #${i + 1} must include at least one test case.`);
+        return;
+      }
     }
 
     setIsCreating(true);
@@ -187,6 +387,14 @@ export const InterviewerStudioPage: React.FC<InterviewerStudioPageProps> = ({
           correct_answer: q.correct_answer.trim(),
           key_concepts: q.key_concepts_text
             ? q.key_concepts_text.split(',').map((c) => c.trim()).filter(Boolean)
+            : [],
+          question_type: q.question_type || 'verbal',
+          starter_code: q.starter_code || '',
+          test_cases: q.test_cases
+            ? q.test_cases.map((tc) => ({
+                input: tc.input,
+                expected_output: tc.expected_output
+              }))
             : []
         }))
       };
@@ -468,7 +676,7 @@ export const InterviewerStudioPage: React.FC<InterviewerStudioPageProps> = ({
                 key={q.id}
                 className="bg-white border border-stone-200 rounded-none p-6 sm:p-8 shadow-xs space-y-5 hover:border-orange-400 transition-colors relative"
               >
-                <div className="flex items-center justify-between border-b border-stone-200 pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-200 pb-3 gap-3">
                   <div className="flex items-center gap-3">
                     <span className="w-7 h-7 bg-stone-900 text-white font-mono font-bold text-xs flex items-center justify-center rounded-none">
                       {idx + 1}
@@ -482,50 +690,233 @@ export const InterviewerStudioPage: React.FC<InterviewerStudioPageProps> = ({
                     />
                   </div>
 
-                  {questions.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveQuestion(idx)}
-                      className="p-1.5 text-stone-400 hover:text-rose-600 transition-colors"
-                      title="Remove question"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {/* Track-dependent question format selector */}
+                    {selectedTrack === 'tech' && (
+                      <div className="flex items-center border border-stone-300 rounded-none overflow-hidden bg-stone-100 p-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleQuestionTypeChange(idx, 'verbal')}
+                          className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors ${
+                            q.question_type === 'verbal'
+                              ? 'bg-white text-orange-700 shadow-xs'
+                              : 'text-stone-600 hover:text-stone-900'
+                          }`}
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          <span>Verbal</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleQuestionTypeChange(idx, 'coding_bug_fix')}
+                          className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors ${
+                            q.question_type === 'coding_bug_fix'
+                              ? 'bg-orange-600 text-white shadow-xs'
+                              : 'text-stone-600 hover:text-stone-900'
+                          }`}
+                        >
+                          <Terminal className="w-3 h-3" />
+                          <span>C++ Bug Fix</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleQuestionTypeChange(idx, 'coding_leetcode')}
+                          className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors ${
+                            q.question_type === 'coding_leetcode'
+                              ? 'bg-stone-900 text-white shadow-xs'
+                              : 'text-stone-600 hover:text-stone-900'
+                          }`}
+                        >
+                          <Code className="w-3 h-3" />
+                          <span>C++ LeetCode</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {questions.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveQuestion(idx)}
+                        className="p-1.5 text-stone-400 hover:text-rose-600 transition-colors ml-2"
+                        title="Remove question"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {/* Question Text */}
+                {/* Question / Problem Prompt */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-stone-700 block">
-                    Question Text (What the candidate is asked)
+                    {q.question_type === 'verbal'
+                      ? 'Question Text (What the candidate is asked)'
+                      : 'Coding Problem Prompt & Instructions (C++)'}
                   </label>
                   <textarea
                     rows={2}
                     value={q.question_text}
                     onChange={(e) => handleQuestionChange(idx, 'question_text', e.target.value)}
-                    placeholder="Enter the scenario or technical prompt..."
+                    placeholder={
+                      q.question_type === 'verbal'
+                        ? 'Enter the scenario or technical prompt...'
+                        : 'Explain the problem statement, time/space constraints, and expected logic...'
+                    }
                     className="w-full px-4 py-2.5 border border-stone-300 rounded-none text-xs font-medium focus:border-orange-500 focus:outline-none leading-relaxed"
                     required
                   />
                 </div>
 
-                {/* Model Correct Answer */}
+                {/* Coding Challenge Specific Editors (Starter Code + Test Cases) */}
+                {q.question_type && q.question_type !== 'verbal' && (
+                  <div className="space-y-5 p-5 bg-stone-50 border border-stone-200 rounded-none">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Code className="w-4 h-4 text-orange-600" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-stone-900">
+                          C++ Coding Assessment Configuration (GCC C++20)
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold bg-orange-100 text-orange-800 px-2 py-0.5 border border-orange-200">
+                        {q.question_type === 'coding_bug_fix' ? 'Bug Fix Challenge' : 'Algorithm / LeetCode'}
+                      </span>
+                    </div>
+
+                    {/* Starter Code seen by Candidate */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-wider text-stone-700">
+                          Candidate Starter Code (C++)
+                        </label>
+                        <span className="text-[10px] text-stone-500">
+                          {q.question_type === 'coding_bug_fix'
+                            ? 'Code with bug that candidate must fix'
+                            : 'Boilerplate function and I/O loop'}
+                        </span>
+                      </div>
+                      <textarea
+                        rows={7}
+                        value={q.starter_code || ''}
+                        onChange={(e) => handleQuestionChange(idx, 'starter_code', e.target.value)}
+                        placeholder="#include <iostream>..."
+                        className="w-full px-4 py-3 bg-stone-900 text-emerald-400 font-mono text-xs border border-stone-700 rounded-none focus:border-orange-500 focus:outline-none leading-relaxed"
+                        required
+                      />
+                    </div>
+
+                    {/* Test Cases Manager */}
+                    <div className="space-y-3 pt-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-bold uppercase tracking-wider text-stone-800 block">
+                            Automated Test Cases (stdin → stdout)
+                          </span>
+                          <span className="text-[10px] text-stone-500">
+                            Candidate's compiled C++ binary will be executed against these inputs with 4-second timeout.
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleAddTestCase(idx)}
+                          className="px-3 py-1 bg-white hover:bg-stone-100 text-stone-800 text-[11px] font-bold uppercase tracking-wider border border-stone-300 rounded-none flex items-center gap-1 shadow-xs"
+                        >
+                          <Plus className="w-3.5 h-3.5 text-orange-600" />
+                          <span>Add Test Case</span>
+                        </button>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {(q.test_cases || []).map((tc, tcIdx) => (
+                          <div
+                            key={tc.id || tcIdx}
+                            className="p-3 bg-white border border-stone-200 rounded-none grid grid-cols-1 md:grid-cols-12 gap-3 items-start"
+                          >
+                            <div className="md:col-span-1 flex items-center gap-1 pt-2">
+                              <span className="text-[10px] font-mono font-bold text-stone-500">
+                                #{tcIdx + 1}
+                              </span>
+                            </div>
+
+                            <div className="md:col-span-5 space-y-1">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">
+                                Input (stdin)
+                              </label>
+                              <textarea
+                                rows={2}
+                                value={tc.input}
+                                onChange={(e) =>
+                                  handleTestCaseChange(idx, tcIdx, 'input', e.target.value)
+                                }
+                                placeholder="e.g. 5 10\n5 12 8 15 20"
+                                className="w-full px-2.5 py-1.5 font-mono text-xs border border-stone-300 rounded-none focus:border-orange-500 focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="md:col-span-5 space-y-1">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">
+                                Expected Output (stdout)
+                              </label>
+                              <textarea
+                                rows={2}
+                                value={tc.expected_output}
+                                onChange={(e) =>
+                                  handleTestCaseChange(idx, tcIdx, 'expected_output', e.target.value)
+                                }
+                                placeholder="e.g. 12 15 20"
+                                className="w-full px-2.5 py-1.5 font-mono text-xs border border-stone-300 rounded-none focus:border-orange-500 focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="md:col-span-1 flex justify-end pt-2">
+                              {(q.test_cases?.length || 0) > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveTestCase(idx, tcIdx)}
+                                  className="p-1.5 text-stone-400 hover:text-rose-600 transition-colors"
+                                  title="Delete test case"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Model Correct Answer / Reference Solution */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold uppercase tracking-wider text-orange-700 flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>Model Correct Answer (Semantic Standard)</span>
+                      <span>
+                        {q.question_type === 'verbal'
+                          ? 'Model Correct Answer (Semantic Standard)'
+                          : 'Interviewer Reference C++ Working Solution'}
+                      </span>
                     </label>
                     <span className="text-[10px] text-stone-400">
-                      Sentence-BERT cosine similarity target
+                      {q.question_type === 'verbal'
+                        ? 'Sentence-BERT cosine similarity target'
+                        : 'Clean working C++ implementation for candidate report comparison'}
                     </span>
                   </div>
                   <textarea
-                    rows={3}
+                    rows={q.question_type === 'verbal' ? 3 : 7}
                     value={q.correct_answer}
                     onChange={(e) => handleQuestionChange(idx, 'correct_answer', e.target.value)}
-                    placeholder="Type the ideal candidate response, trade-offs, and architectural solutions..."
-                    className="w-full px-4 py-2.5 bg-orange-50/20 border border-orange-200 rounded-none text-xs font-medium focus:border-orange-500 focus:outline-none leading-relaxed text-stone-900"
+                    placeholder={
+                      q.question_type === 'verbal'
+                        ? 'Type the ideal candidate response, trade-offs, and architectural solutions...'
+                        : '#include <iostream>...'
+                    }
+                    className={`w-full px-4 py-2.5 border rounded-none text-xs font-medium focus:border-orange-500 focus:outline-none leading-relaxed ${
+                      q.question_type === 'verbal'
+                        ? 'bg-orange-50/20 border-orange-200 text-stone-900'
+                        : 'bg-stone-900 border-stone-700 text-amber-300 font-mono'
+                    }`}
                     required
                   />
                 </div>

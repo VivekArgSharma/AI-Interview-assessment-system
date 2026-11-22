@@ -222,6 +222,31 @@ export interface SessionQuestionRecord {
   timestamp?: string;
 }
 
+export interface TestCaseItem {
+  id?: string;
+  input: string;
+  expected_output: string;
+}
+
+export interface TestCaseResult {
+  test_index: number;
+  input: string;
+  expected_output: string;
+  actual_output: string;
+  passed: boolean;
+  runtime_ms: number;
+  error_message?: string | null;
+}
+
+export interface CppExecutionResponse {
+  compilation_success: boolean;
+  compiler_output: string;
+  total_tests: number;
+  passed_tests: number;
+  all_passed: boolean;
+  results: TestCaseResult[];
+}
+
 export interface QuestionData {
   id: string;
   session_id: string;
@@ -232,6 +257,15 @@ export interface QuestionData {
   targeted_dimension?: string | null;
   context_notes?: string | null;
   expected_concepts?: string[];
+  coding_metadata?: {
+    is_coding?: boolean;
+    question_type?: string;
+    language?: string;
+    type?: string;
+    starter_code?: string;
+    correct_code?: string;
+    test_cases?: TestCaseItem[];
+  } | null;
   created_at: string;
 }
 
@@ -317,12 +351,16 @@ export interface SessionReportData {
     stage: string;
     transcript: string;
     exemplar_answer?: string;
+    correct_answer?: string;
     is_interviewer_model_answer?: boolean;
     semantic_match_percentage?: number | null;
     key_takeaways?: string[];
     speech_coach_feedback?: string;
     audio_duration_seconds: number;
     has_audio?: boolean;
+    code_submission?: string | null;
+    code_test_results?: any | null;
+    coding_metadata?: any | null;
     assessments: Array<{
       criterion_name: string;
       score: number;

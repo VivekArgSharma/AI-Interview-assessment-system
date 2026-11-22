@@ -18,7 +18,9 @@ import {
   HelpCircle,
   Flag,
   Zap,
-  Check
+  Check,
+  Code,
+  Terminal
 } from 'lucide-react';
 import { SessionReportData } from '../types';
 import { ApiService } from '../services/api';
@@ -306,100 +308,190 @@ export const SessionReportPage: React.FC<SessionReportPageProps> = ({
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Your Answer */}
                     <div className="p-5 bg-stone-50 border border-stone-200 rounded-none space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wider text-stone-700 flex items-center gap-2">
-                          <Mic className="w-4 h-4 text-stone-500" />
-                          <span>Your Submitted Answer:</span>
-                        </span>
-                        <span className="text-[10px] font-mono text-stone-500 font-bold">
-                          {qa.transcript.split(/\s+/).filter(Boolean).length} words
-                        </span>
-                      </div>
-                      <p className="text-xs text-stone-800 leading-relaxed font-mono bg-white p-4 rounded-none border border-stone-200">
-                        "{qa.transcript}"
-                      </p>
-
-                      {qa.assessments && qa.assessments.length > 0 && (
-                        <div className="space-y-2 pt-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
-                            Evaluated Rubric Criteria:
-                          </span>
-                          <div className="flex flex-wrap gap-2">
-                            {qa.assessments.map((ass, i) => (
+                      {qa.code_submission ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold uppercase tracking-wider text-stone-700 flex items-center gap-2">
+                              <Terminal className="w-4 h-4 text-emerald-600" />
+                              <span>C++ Code Submission</span>
+                            </span>
+                            {qa.code_test_results && (
                               <span
-                                key={i}
-                                className={`text-[11px] px-3 py-1 rounded-none border font-semibold ${
-                                  ass.score >= 4
-                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                    : ass.score >= 3
-                                    ? 'bg-orange-50 text-orange-800 border-orange-200'
-                                    : 'bg-amber-50 text-amber-800 border-amber-200'
+                                className={`text-[10px] font-mono font-bold px-2 py-0.5 border ${
+                                  qa.code_test_results.all_passed
+                                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                    : 'bg-rose-100 text-rose-800 border-rose-300'
                                 }`}
                               >
-                                {ass.criterion_name}: {ass.score}/5
+                                {qa.code_test_results.all_passed ? '✓ All Tests Passed' : '✗ Tests Incomplete'} (
+                                {qa.code_test_results.passed_count}/{qa.code_test_results.total_count})
                               </span>
-                            ))}
+                            )}
                           </div>
+
+                          <pre className="bg-stone-950 text-emerald-400 p-4 font-mono text-xs overflow-x-auto leading-relaxed border border-stone-800 max-h-[300px]">
+                            {qa.code_submission}
+                          </pre>
+
+                          {qa.code_test_results && (
+                            <div className="space-y-1.5 pt-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">
+                                Test Results Breakdown ({qa.code_test_results.total_runtime_ms}ms runtime):
+                              </span>
+                              <div className="grid grid-cols-1 gap-1.5 font-mono text-[11px]">
+                                {(qa.code_test_results.test_results || []).map((tr: any, tri: number) => (
+                                  <div
+                                    key={tri}
+                                    className={`p-2 border flex items-center justify-between ${
+                                      tr.passed
+                                        ? 'bg-emerald-50/60 border-emerald-200 text-emerald-900'
+                                        : 'bg-rose-50/60 border-rose-200 text-rose-900'
+                                    }`}
+                                  >
+                                    <span>Test #{tr.test_case_index + 1}: {tr.passed ? '✓ PASSED' : '✗ FAILED'}</span>
+                                    <span>{tr.runtime_ms}ms</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold uppercase tracking-wider text-stone-700 flex items-center gap-2">
+                              <Mic className="w-4 h-4 text-stone-500" />
+                              <span>Your Submitted Answer:</span>
+                            </span>
+                            <span className="text-[10px] font-mono text-stone-500 font-bold">
+                              {qa.transcript.split(/\s+/).filter(Boolean).length} words
+                            </span>
+                          </div>
+                          <p className="text-xs text-stone-800 leading-relaxed font-mono bg-white p-4 rounded-none border border-stone-200">
+                            "{qa.transcript}"
+                          </p>
+
+                          {qa.assessments && qa.assessments.length > 0 && (
+                            <div className="space-y-2 pt-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+                                Evaluated Rubric Criteria:
+                              </span>
+                              <div className="flex flex-wrap gap-2">
+                                {qa.assessments.map((ass, i) => (
+                                  <span
+                                    key={i}
+                                    className={`text-[11px] px-3 py-1 rounded-none border font-semibold ${
+                                      ass.score >= 4
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                        : ass.score >= 3
+                                        ? 'bg-orange-50 text-orange-800 border-orange-200'
+                                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                                    }`}
+                                  >
+                                    {ass.criterion_name}: {ass.score}/5
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
 
                     {/* Exemplar Model Answer */}
                     <div className="p-5 bg-orange-50/30 border border-orange-200 rounded-none space-y-4">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-orange-600" />
-                          <span className="text-xs font-bold uppercase tracking-wider text-orange-900">
-                            {qa.is_interviewer_model_answer ? "Interviewer's Model Answer:" : "Exemplar Model Answer:"}
-                          </span>
-                          {qa.semantic_match_percentage != null && (
-                            <span className="text-[10px] font-mono font-extrabold px-2 py-0.5 bg-orange-600 text-white rounded-none">
-                              {qa.semantic_match_percentage}% Semantic Match
+                      {qa.code_submission || qa.coding_metadata?.is_coding ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold uppercase tracking-wider text-orange-900 flex items-center gap-2">
+                              <Code className="w-4 h-4 text-orange-600" />
+                              <span>Interviewer Reference C++ Working Solution:</span>
                             </span>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleToggleVoice(exemplarText, `exemplar_${idx}`)}
-                          className={`flex items-center gap-2 px-4 py-1.5 rounded-none text-xs font-bold uppercase tracking-wider transition-all shadow-xs ${
-                            activeAudioKey === `exemplar_${idx}`
-                              ? 'bg-rose-600 text-white animate-pulse'
-                              : 'bg-orange-600 hover:bg-orange-700 text-white'
-                          }`}
-                        >
-                          {activeAudioKey === `exemplar_${idx}` ? (
-                            <>
-                              <VolumeX className="w-4 h-4" />
-                              <span>Stop Voice</span>
-                            </>
-                          ) : (
-                            <>
-                              <Volume2 className="w-4 h-4" />
-                              <span>Hear Model Answer</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-
-                      <p className="text-xs text-stone-800 leading-relaxed font-mono bg-white p-4 rounded-none border border-orange-200">
-                        "{exemplarText}"
-                      </p>
-
-                      {takeaways.length > 0 && (
-                        <div className="space-y-2 pt-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-orange-800 block">
-                            Core Strategic Pillars Included:
-                          </span>
-                          <div className="flex flex-wrap gap-2">
-                            {takeaways.map((t: string, i: number) => (
-                              <span
-                                key={i}
-                                className="text-[11px] px-2.5 py-0.5 rounded-none bg-orange-100/70 text-orange-900 border border-orange-200 font-medium"
-                              >
-                                • {t}
-                              </span>
-                            ))}
+                            <span className="text-[10px] font-mono font-extrabold px-2 py-0.5 bg-orange-600 text-white">
+                              GCC C++20 Verified
+                            </span>
                           </div>
+
+                          <pre className="bg-stone-900 text-amber-300 p-4 font-mono text-xs overflow-x-auto leading-relaxed border border-stone-800 max-h-[300px]">
+                            {qa.exemplar_answer || qa.correct_answer || '// Reference model solution'}
+                          </pre>
+
+                          {takeaways.length > 0 && (
+                            <div className="space-y-2 pt-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-orange-800 block">
+                                Core Concepts / Algorithmic Requirements:
+                              </span>
+                              <div className="flex flex-wrap gap-2">
+                                {takeaways.map((t: string, i: number) => (
+                                  <span
+                                    key={i}
+                                    className="text-[11px] px-2.5 py-0.5 rounded-none bg-orange-100/70 text-orange-900 border border-orange-200 font-medium"
+                                  >
+                                    • {t}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
+                      ) : (
+                        <>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-orange-600" />
+                              <span className="text-xs font-bold uppercase tracking-wider text-orange-900">
+                                {qa.is_interviewer_model_answer ? "Interviewer's Model Answer:" : "Exemplar Model Answer:"}
+                              </span>
+                              {qa.semantic_match_percentage != null && (
+                                <span className="text-[10px] font-mono font-extrabold px-2 py-0.5 bg-orange-600 text-white rounded-none">
+                                  {qa.semantic_match_percentage}% Semantic Match
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleToggleVoice(exemplarText, `exemplar_${idx}`)}
+                              className={`flex items-center gap-2 px-4 py-1.5 rounded-none text-xs font-bold uppercase tracking-wider transition-all shadow-xs ${
+                                activeAudioKey === `exemplar_${idx}`
+                                  ? 'bg-rose-600 text-white animate-pulse'
+                                  : 'bg-orange-600 hover:bg-orange-700 text-white'
+                              }`}
+                            >
+                              {activeAudioKey === `exemplar_${idx}` ? (
+                                <>
+                                  <VolumeX className="w-4 h-4" />
+                                  <span>Stop Voice</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Volume2 className="w-4 h-4" />
+                                  <span>Hear Model Answer</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          <p className="text-xs text-stone-800 leading-relaxed font-mono bg-white p-4 rounded-none border border-orange-200">
+                            "{exemplarText}"
+                          </p>
+
+                          {takeaways.length > 0 && (
+                            <div className="space-y-2 pt-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-orange-800 block">
+                                Core Strategic Pillars Included:
+                              </span>
+                              <div className="flex flex-wrap gap-2">
+                                {takeaways.map((t: string, i: number) => (
+                                  <span
+                                    key={i}
+                                    className="text-[11px] px-2.5 py-0.5 rounded-none bg-orange-100/70 text-orange-900 border border-orange-200 font-medium"
+                                  >
+                                    • {t}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -574,8 +666,16 @@ export const SessionReportPage: React.FC<SessionReportPageProps> = ({
                 <p className="text-sm font-semibold text-stone-900 mt-1">"{qa.question_text}"</p>
               </div>
               <div className="p-4 bg-stone-50 border border-stone-200 rounded-none text-xs text-stone-800 leading-relaxed font-mono">
-                <span className="font-bold text-orange-700 block text-[10px] uppercase mb-1 font-sans">Your Answer:</span>
-                <p>{qa.transcript}</p>
+                <span className="font-bold text-orange-700 block text-[10px] uppercase mb-1 font-sans">
+                  {qa.code_submission ? 'Your Submitted C++ Solution:' : 'Your Answer:'}
+                </span>
+                {qa.code_submission ? (
+                  <pre className="bg-stone-950 text-emerald-400 p-4 font-mono text-xs overflow-x-auto leading-relaxed border border-stone-800">
+                    {qa.code_submission}
+                  </pre>
+                ) : (
+                  <p>{qa.transcript}</p>
+                )}
               </div>
             </div>
           ))}
