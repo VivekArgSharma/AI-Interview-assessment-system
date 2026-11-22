@@ -42,6 +42,7 @@ import { ApiService } from '../services/api';
 import { convertBlobToWav, getStudioMicrophoneStream } from '../utils/audio';
 import { voiceEngine, DEFAULT_VOICES } from '../services/voiceEngine';
 import { AudioVisualizer } from './AudioVisualizer';
+import { InterviewerAvatar } from './InterviewerAvatar';
 
 interface LiveInterviewRoomProps {
   session: InterviewSessionData;
@@ -769,22 +770,43 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: AI Interviewer & Camera Preview */}
         <div className={`${isCodingQuestion ? 'lg:col-span-4' : 'lg:col-span-5'} space-y-6`}>
-          {/* AI Voice Avatar Card */}
-          <div className="bg-white border border-stone-200 rounded-none p-6 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
+          {/* AI Realistic 2D Lip-Syncing Avatar */}
+          <InterviewerAvatar
+            voicePreference={voicePreference}
+            isSpeaking={isSpeakingQuestion}
+            isListening={isRecording}
+            questionText={currentQuestion?.question_text}
+            onBargeIn={stopSpeaking}
+            onReplayVoice={() => currentQuestion && speakQuestionText(currentQuestion.question_text)}
+          />
+
+          {/* Question Text & Voice Settings Card */}
+          <div className="bg-white border border-stone-200 rounded-none p-5 shadow-xs">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <Bot className="w-4 h-4 text-orange-600" />
-                <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">AI Interviewer</span>
+                <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">Current Question Prompt</span>
               </div>
-              {isSpeakingQuestion && (
-                <div className="flex items-center gap-1.5 text-xs text-orange-600 font-bold">
-                  <span className="w-2 h-2 rounded-none bg-orange-600 animate-ping" />
-                  <span>Speaking...</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <select
+                  value={voicePreference}
+                  onChange={(e) => {
+                    setVoicePreference(e.target.value);
+                    voiceEngine.setSelectedVoice(e.target.value);
+                  }}
+                  className="bg-stone-50 border border-stone-200 text-xs font-medium text-stone-700 rounded-none px-2 py-1 outline-none focus:border-orange-500"
+                  title="Choose AI Interviewer Persona & Voice"
+                >
+                  {DEFAULT_VOICES.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div className="p-5 bg-stone-50 border border-stone-200 rounded-none mb-5 relative min-h-[140px] max-h-[340px] overflow-y-auto flex items-start">
+            <div className="p-4 bg-stone-50 border border-stone-200 rounded-none mb-4 relative min-h-[110px] max-h-[300px] overflow-y-auto flex items-start">
               <p className="text-sm sm:text-base font-semibold text-stone-900 leading-relaxed font-sans whitespace-pre-wrap">
                 "{currentQuestion?.question_text || 'Preparing question...'}"
               </p>
@@ -795,27 +817,11 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
                 <button
                   onClick={() => currentQuestion && speakQuestionText(currentQuestion.question_text)}
                   disabled={isSpeakingQuestion}
-                  className="flex items-center gap-2 px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold uppercase tracking-wider rounded-none transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold uppercase tracking-wider rounded-none transition-colors disabled:opacity-50"
                 >
                   <Volume2 className="w-4 h-4 text-orange-600" />
                   <span>Repeat Question</span>
                 </button>
-
-                <select
-                  value={voicePreference}
-                  onChange={(e) => {
-                    setVoicePreference(e.target.value);
-                    voiceEngine.setSelectedVoice(e.target.value);
-                  }}
-                  className="bg-stone-50 border border-stone-200 text-xs font-medium text-stone-700 rounded-none px-3 py-2 outline-none focus:border-orange-500"
-                  title="Choose AI Interviewer Voice"
-                >
-                  {DEFAULT_VOICES.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               {isSpeakingQuestion && (

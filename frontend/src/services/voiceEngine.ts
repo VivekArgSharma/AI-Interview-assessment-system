@@ -46,6 +46,14 @@ export const DEFAULT_VOICES: VoicePersona[] = [
   }
 ];
 
+export interface VisemeFrame {
+  amplitude: number; // 0.0 to 1.0 (jaw opening & audio energy)
+  viseme: 'rest' | 'aa' | 'ee' | 'oh' | 'oo' | 'th';
+  isSpeaking: boolean;
+  timestamp: number;
+}
+
+type VisemeListener = (frame: VisemeFrame) => void;
 type VoiceStateListener = (isSpeaking: boolean) => void;
 
 class VoiceEngine {
@@ -54,6 +62,10 @@ class VoiceEngine {
   private currentUtterance: SpeechSynthesisUtterance | null = null;
   private _isSpeaking: boolean = false;
   private listeners: Set<VoiceStateListener> = new Set();
+  private visemeListeners: Set<VisemeListener> = new Set();
+  private visemeAnimId: number | null = null;
+  private currentAmplitude: number = 0;
+  private currentViseme: 'rest' | 'aa' | 'ee' | 'oh' | 'oo' | 'th' = 'rest';
   private selectedVoiceId: string = 'en-US-JennyNeural';
 
   private constructor() {
@@ -84,9 +96,86 @@ class VoiceEngine {
     return () => this.listeners.delete(listener);
   }
 
+  subscribeViseme(listener: VisemeListener): () => void {
+    this.visemeListeners.add(listener);
+    listener({
+      amplitude: this.currentAmplitude,
+      viseme: this.currentViseme,
+      isSpeaking: this._isSpeaking,
+      timestamp: Date.now()
+    });
+    return () => this.visemeListeners.delete(listener);
+  }
+
+  private broadcastViseme(frame: VisemeFrame) {
+    this.currentAmplitude = frame.amplitude;
+    this.currentViseme = frame.viseme;
+    this.visemeListeners.forEach((fn) => fn(frame));
+  }
+
   private setSpeaking(state: boolean) {
     this._isSpeaking = state;
     this.listeners.forEach((fn) => fn(state));
+    if (!state) {
+      this.stopVisemeTracking();
+    }
+  }
+
+  private startVisemeTracking(audio: HTMLAudioElement) {
+    this.stopVisemeTracking();
+    const startTime = performance.now();
+
+    const loop = () => {
+      if (!this._isSpeaking || this.currentAudio !== audio || audio.paused || audio.ended) {
+        this.broadcastViseme({ amplitude: 0, viseme: 'rest', isSpeaking: false, timestamp: Date.now() });
+        return;
+      }
+
+      const elapsed = (performance.now() - startTime) / 1000;
+      // Synthesize realistic speech syllabic cadence (human speech syllables ~3.5 to 5.5 Hz)
+      const syllable =
+        Math.sin(elapsed * 18.0) * 0.4 +
+        Math.sin(elapsed * 9.5) * 0.35 +
+        Math.sin(elapsed * 27.0) * 0.15;
+      const pauseMod = Math.max(0, Math.sin(elapsed * 2.2)); // Natural micro-pauses between sentence clauses
+      const rawAmp = Math.max(0, Math.min(1.0, (syllable + 0.35) * (pauseMod > 0.12 ? 1.0 : 0.04)));
+
+      // Phonetic viseme phase cycle synchronized with speech rhythm
+      const phase = (elapsed * 4.6) % 5.0;
+      let viseme: 'rest' | 'aa' | 'ee' | 'oh' | 'oo' | 'th' = 'rest';
+      if (rawAmp < 0.1) {
+        viseme = 'rest';
+      } else if (phase < 1.2) {
+        viseme = 'aa'; // Wide open jaw
+      } else if (phase < 2.3) {
+        viseme = 'ee'; // Wide smile, teeth visible
+      } else if (phase < 3.4) {
+        viseme = 'oh'; // Rounded mouth
+      } else if (phase < 4.3) {
+        viseme = 'th'; // Teeth visible, tongue touch
+      } else {
+        viseme = 'oo'; // Puckered small lips
+      }
+
+      this.broadcastViseme({
+        amplitude: rawAmp,
+        viseme,
+        isSpeaking: true,
+        timestamp: Date.now()
+      });
+
+      this.visemeAnimId = requestAnimationFrame(loop);
+    };
+
+    this.visemeAnimId = requestAnimationFrame(loop);
+  }
+
+  private stopVisemeTracking() {
+    if (this.visemeAnimId) {
+      cancelAnimationFrame(this.visemeAnimId);
+      this.visemeAnimId = null;
+    }
+    this.broadcastViseme({ amplitude: 0, viseme: 'rest', isSpeaking: false, timestamp: Date.now() });
   }
 
   get isSpeaking(): boolean {
@@ -124,11 +213,13 @@ class VoiceEngine {
       audio.onplay = () => {
         if (this.currentAudio !== audio) return;
         this.setSpeaking(true);
+        this.startVisemeTracking(audio);
         options?.onStart?.();
       };
 
       audio.onended = () => {
         if (this.currentAudio !== audio) return;
+        this.stopVisemeTracking();
         this.setSpeaking(false);
         this.currentAudio = null;
         options?.onEnd?.();
@@ -214,6 +305,7 @@ class VoiceEngine {
    * Barge-in or stop speech immediately
    */
   stop() {
+    this.stopVisemeTracking();
     if (this.currentAudio) {
       const a = this.currentAudio;
       this.currentAudio = null;
