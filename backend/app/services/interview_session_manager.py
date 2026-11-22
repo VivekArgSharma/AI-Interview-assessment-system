@@ -264,7 +264,7 @@ class InterviewSessionManager:
             .order_by(Question.sequence_number)
             .all()
         )
-        has_custom_preseeded = len(custom_q_list) > 1 and session.mode == "custom_interview"
+        has_custom_preseeded = len(custom_q_list) >= 1 and session.mode == "custom_interview"
 
         effective_total_stages = len(custom_q_list) if has_custom_preseeded else len(stages)
 
@@ -295,9 +295,11 @@ class InterviewSessionManager:
                 next_q = custom_q_list[session.current_stage_index]
                 session.current_stage = next_q.interview_stage
                 db.commit()
+                stage_title = next_q.interview_stage
             else:
                 next_stage = stages[session.current_stage_index]
                 session.current_stage = next_stage.get("stage_id", f"stage_{session.current_stage_index + 1}")
+                stage_title = next_stage.get('title', '')
 
                 prompt_text = self._resolve_stage_prompt(next_stage, session.difficulty)
 
@@ -319,7 +321,7 @@ class InterviewSessionManager:
                 "stage": question.interview_stage,
                 "transcript": clean_transcript,
                 "next_action": "next_stage",
-                "message": f"Advancing to Stage {session.current_stage_index + 1}: {next_stage.get('title', '')}.",
+                "message": f"Advancing to Stage {session.current_stage_index + 1}: {stage_title}.",
                 "follow_up_question": None,
                 "next_question": next_q,
                 "stage_assessments": stage_assessments,

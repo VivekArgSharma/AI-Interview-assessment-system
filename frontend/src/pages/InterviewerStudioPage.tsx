@@ -264,19 +264,50 @@ export const InterviewerStudioPage: React.FC<InterviewerStudioPageProps> = ({
     setCreatedInterview(null);
   };
 
-  const handleAddQuestion = () => {
+  const handleAddQuestion = (type: 'verbal' | 'coding_bug_fix' | 'coding_leetcode' = 'verbal') => {
     const newId = (questions.length + 1).toString();
-    setQuestions([
-      ...questions,
-      {
+    let newQ: QuestionFormItem;
+
+    if (type === 'coding_bug_fix') {
+      newQ = {
         id: newId,
-        stage: `Stage ${questions.length + 1}`,
+        stage: `Stage ${questions.length + 1}: Live C++ Debugging`,
+        question_type: 'coding_bug_fix',
+        question_text: 'Fix the bug in the C++ function below so that it executes cleanly without memory corruption or bounds crashes.',
+        starter_code: DEFAULT_TECH_QUESTIONS[1].starter_code,
+        correct_answer: DEFAULT_TECH_QUESTIONS[1].correct_answer,
+        key_concepts_text: 'iterator invalidation, vector bounds, C++ memory safety',
+        test_cases: [
+          { id: `tc_${Date.now()}_1`, input: '5 10\n5 12 8 15 20', expected_output: '12 15 20' },
+          { id: `tc_${Date.now()}_2`, input: '3 1\n1 2 3', expected_output: '1 2 3' }
+        ]
+      };
+    } else if (type === 'coding_leetcode') {
+      newQ = {
+        id: newId,
+        stage: `Stage ${questions.length + 1}: C++ LeetCode Problem`,
+        question_type: 'coding_leetcode',
+        question_text: 'Given an input array, implement the optimal C++ solution adhering to O(N) time complexity.',
+        starter_code: DEFAULT_TECH_QUESTIONS[2].starter_code,
+        correct_answer: DEFAULT_TECH_QUESTIONS[2].correct_answer,
+        key_concepts_text: 'dynamic programming, Kadane algorithm, O(1) auxiliary space',
+        test_cases: [
+          { id: `tc_${Date.now()}_1`, input: '9\n-2 1 -3 4 -1 2 1 -5 4', expected_output: '6' },
+          { id: `tc_${Date.now()}_2`, input: '5\n5 4 -1 7 8', expected_output: '23' }
+        ]
+      };
+    } else {
+      newQ = {
+        id: newId,
+        stage: `Stage ${questions.length + 1}: Technical / Architecture Assessment`,
         question_type: 'verbal',
         question_text: '',
         correct_answer: '',
         key_concepts_text: ''
-      }
-    ]);
+      };
+    }
+
+    setQuestions([...questions, newQ]);
   };
 
   const handleRemoveQuestion = (index: number) => {
@@ -660,14 +691,20 @@ export const InterviewerStudioPage: React.FC<InterviewerStudioPageProps> = ({
                 Type the question and the exact correct answer standard. The candidate's response will be semantically matched with Sentence-BERT.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleAddQuestion}
-              className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold uppercase tracking-wider rounded-none border border-stone-300 transition-colors flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4 text-orange-600" />
-              <span>Add Question</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold px-3 py-1 bg-stone-100 text-stone-700 border border-stone-200">
+                {questions.length} {questions.length === 1 ? 'Question' : 'Questions'}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleAddQuestion(selectedTrack === 'tech' ? 'coding_bug_fix' : 'verbal')}
+                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white text-xs font-bold uppercase tracking-wider rounded-none shadow-xs transition-colors flex items-center gap-1.5"
+                title="Add another question to this assessment"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Add Question</span>
+              </button>
+            </div>
           </div>
 
           <div className="space-y-6">
@@ -1145,6 +1182,54 @@ export const InterviewerStudioPage: React.FC<InterviewerStudioPageProps> = ({
                 )}
               </div>
             ))}
+          </div>
+
+          {/* Prominent "+ Add More Questions" Section at Bottom of Questions List */}
+          <div className="bg-stone-50 border-2 border-dashed border-stone-300 hover:border-orange-500 rounded-none p-6 sm:p-8 text-center space-y-4 transition-colors">
+            <div className="max-w-md mx-auto space-y-1">
+              <span className="text-xs font-bold uppercase tracking-wider text-stone-900 block">
+                Add More Questions ({questions.length} Currently Configured)
+              </span>
+              <p className="text-[11px] text-stone-500">
+                You can add as many verbal questions or C++ coding tests as you like. Candidates will complete them in sequential order.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => handleAddQuestion('verbal')}
+                className="px-5 py-3 bg-white hover:bg-orange-50 border border-stone-300 hover:border-orange-500 text-stone-900 hover:text-orange-700 text-xs font-bold uppercase tracking-wider rounded-none flex items-center gap-2 shadow-xs transition-all"
+              >
+                <Plus className="w-4 h-4 text-orange-600" />
+                <MessageSquare className="w-4 h-4 text-stone-500" />
+                <span>+ Add Verbal Question</span>
+              </button>
+
+              {selectedTrack === 'tech' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleAddQuestion('coding_bug_fix')}
+                    className="px-5 py-3 bg-white hover:bg-orange-50 border border-stone-300 hover:border-orange-500 text-stone-900 hover:text-orange-700 text-xs font-bold uppercase tracking-wider rounded-none flex items-center gap-2 shadow-xs transition-all"
+                  >
+                    <Plus className="w-4 h-4 text-orange-600" />
+                    <Terminal className="w-4 h-4 text-rose-600" />
+                    <span>+ Add C++ Bug Fix Question</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleAddQuestion('coding_leetcode')}
+                    className="px-5 py-3 bg-white hover:bg-orange-50 border border-stone-300 hover:border-orange-500 text-stone-900 hover:text-orange-700 text-xs font-bold uppercase tracking-wider rounded-none flex items-center gap-2 shadow-xs transition-all"
+                  >
+                    <Plus className="w-4 h-4 text-orange-600" />
+                    <Code className="w-4 h-4 text-stone-900" />
+                    <span>+ Add C++ LeetCode Problem</span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
