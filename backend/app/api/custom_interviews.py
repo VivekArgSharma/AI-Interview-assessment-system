@@ -44,6 +44,24 @@ class CustomInterviewCreateRequest(BaseModel):
     track: str = Field("tech", description="'tech' or 'sales'")
     duration_minutes: int = Field(15, ge=5, le=60)
     questions: List[CustomQuestionInput] = Field(..., min_length=1)
+    target_competencies: Optional[List[dict]] = Field(default_factory=list, description="Target competencies for spider radar")
+
+class JobDescriptionGenerateRequest(BaseModel):
+    job_description: str = Field(..., min_length=15, description="Job description or role profile text")
+    track: str = Field("tech", description="'tech' or 'sales'")
+    duration_minutes: int = Field(20, ge=5, le=60)
+
+class TargetCompetencyItem(BaseModel):
+    competency: str
+    target_score: float
+    description: str
+
+class JobDescriptionGenerateResponse(BaseModel):
+    title: str
+    track: str
+    duration_minutes: int
+    target_competency_radar: List[TargetCompetencyItem]
+    questions: List[CustomQuestionInput]
 
 class CustomInterviewResponse(BaseModel):
     id: str
@@ -433,3 +451,100 @@ def get_custom_interview_submissions(
         "total_submissions": len(submissions),
         "submissions": submissions
     }
+
+
+@router.post("/generate-from-jd", response_model=JobDescriptionGenerateResponse)
+def generate_interview_from_job_description(payload: JobDescriptionGenerateRequest):
+    """
+    Auto-generates a tailored, multi-question interview (Spoken Q&A, Bug Fix with side-by-side code,
+    and LeetCode C++ with test cases) + Target Competency Spider Radar directly from a Job Description.
+    """
+    jd_lower = payload.job_description.lower()
+    is_sales = payload.track == "sales" or any(k in jd_lower for k in ["sales", "account executive", "bdr", "quota", "saas sales"])
+
+    if is_sales:
+        title = "Enterprise Account Executive & SaaS Sales Screen"
+        target_radar = [
+            {"competency": "Customer Discovery & Pain Qualification", "target_score": 4.6, "description": "Uncovers technical and commercial blockers through targeted diagnostic questions."},
+            {"competency": "Value Proposition & ROI Framing", "target_score": 4.4, "description": "Shifts conversation from feature commoditization to executive ROI."},
+            {"competency": "Objection & Price Resistance Handling", "target_score": 4.5, "description": "De-escalates price resistance without immediate discounting."},
+            {"competency": "Active Listening & Rapport", "target_score": 4.2, "description": "Balances talk-to-listen ratio and reflects stakeholder constraints."},
+            {"competency": "Mutual Action Plan & Closing", "target_score": 4.0, "description": "Drives clear next steps, legal review milestones, and decision criteria."}
+        ]
+        questions = [
+            CustomQuestionInput(
+                stage="Customer Discovery & Qualification",
+                question_text="A prospective enterprise client is hesitant about transitioning from their legacy vendor due to implementation friction. How do you uncover their true underlying organizational hesitation without sounding confrontational?",
+                question_type="verbal",
+                correct_answer="I would start by acknowledging the validity of their friction concern, then ask diagnostic open-ended questions: 'Beyond the migration timeline, what specific failure mode are your team leads most concerned about during cutover?' and quantify the cost of inaction.",
+                key_concepts=["diagnostic discovery", "cost of inaction", "stakeholder consensus", "migration risk"],
+                starter_code="",
+                test_cases=[]
+            ),
+            CustomQuestionInput(
+                stage="Price Resistance & Value Defense",
+                question_text="The procurement director informs you that your proposal is 35% higher than their incumbent solution and demands an immediate price match. How do you navigate this without eroding contract margin?",
+                question_type="verbal",
+                correct_answer="I would de-escalate the adversarial stance by validating their mandate to optimize spend, then pivot from upfront license cost to Total Cost of Ownership (TCO) and business risk. I would ask what features or support tiers they would be comfortable deprioritizing to reach that budget ceiling, preserving unit margin.",
+                key_concepts=["total cost of ownership", "margin preservation", "give-get negotiation", "scope adjustment"],
+                starter_code="",
+                test_cases=[]
+            )
+        ]
+    else:
+        # Technical track
+        if "staff" in jd_lower:
+            title = "Staff Backend Systems & High Concurrency Engineer"
+        elif "senior" in jd_lower:
+            title = "Senior Distributed Systems & Platform Engineer"
+        else:
+            title = "Software Engineering Technical Screen (Systems & Concurrency)"
+
+        target_radar = [
+            {"competency": "Distributed Concurrency & Locks", "target_score": 4.6, "description": "Prevents race conditions, stampedes, and deadlocks in multi-threaded/distributed systems."},
+            {"competency": "System Scalability & Caching", "target_score": 4.5, "description": "Designs low-latency, high-throughput caching layers with safe invalidation."},
+            {"competency": "Fault Tolerance & Idempotency", "target_score": 4.3, "description": "Guarantees exact-once or at-most-once semantics during partial network timeouts."},
+            {"competency": "Algorithmic Rigor & C++ Memory", "target_score": 4.0, "description": "Implements optimal data structures with bounded space and time complexity."},
+            {"competency": "Technical Communication & Trade-Offs", "target_score": 4.2, "description": "Explains architectural trade-offs between latency, consistency, and simplicity."}
+        ]
+
+        questions = [
+            CustomQuestionInput(
+                stage="Architectural Concurrency & Trade-offs",
+                question_text="In high-throughput services receiving 50,000 requests per second, what specific synchronization or locking mechanism do you use to prevent a cache stampede on key expiration, and how do you prevent synchronized expiration cascades?",
+                question_type="verbal",
+                correct_answer="I implement a three-tier mitigation strategy: 1) Singleflight request deduplication or a non-blocking distributed Redis mutex lease so only one worker queries the database on miss, 2) Probabilistic early refresh (XFetch algorithm) before hard TTL, and 3) Randomized TTL jitter (+-10%) to prevent synchronized cliffs.",
+                key_concepts=["singleflight lock", "probabilistic early expiration", "TTL jitter", "stale-while-revalidate", "redis mutex"],
+                starter_code="",
+                test_cases=[]
+            ),
+            CustomQuestionInput(
+                stage="Defect Triage & Concurrency Bug Fix",
+                question_text="Inspect this C++ multi-threaded order queue. The accumulator vector is shared across worker threads without synchronization, resulting in race conditions and memory corruption. Fix the bug using std::mutex and std::lock_guard.",
+                question_type="coding_bug_fix",
+                correct_answer="#include <vector>\n#include <mutex>\n\nclass SafeOrderQueue {\nprivate:\n    std::vector<int> orders;\n    std::mutex mtx;\npublic:\n    void add_order(int order_id) {\n        std::lock_guard<std::mutex> lock(mtx);\n        orders.push_back(order_id);\n    }\n    int size() {\n        std::lock_guard<std::mutex> lock(mtx);\n        return orders.size();\n    }\n};",
+                key_concepts=["std::mutex", "std::lock_guard", "thread safety", "race condition"],
+                starter_code="#include <vector>\n\n// BUG: Shared vector accessed across threads with zero synchronization\nclass SafeOrderQueue {\nprivate:\n    std::vector<int> orders;\npublic:\n    void add_order(int order_id) {\n        orders.push_back(order_id);\n    }\n    int size() {\n        return orders.size();\n    }\n};",
+                test_cases=[]
+            ),
+            CustomQuestionInput(
+                stage="LeetCode Algorithm: In-Memory Sliding Window Counter",
+                question_text="Write a C++ program that reads N incoming request timestamps and a time window size K, and outputs the maximum number of requests received in any window of length K.",
+                question_type="coding_leetcode",
+                correct_answer="#include <iostream>\n#include <vector>\n#include <algorithm>\n\nint main() {\n    int n, k;\n    if (!(std::cin >> n >> k)) return 0;\n    std::vector<int> times(n);\n    for (int i = 0; i < n; i++) {\n        std::cin >> times[i];\n    }\n    int left = 0, max_requests = 0;\n    for (int right = 0; right < n; right++) {\n        while (times[right] - times[left] > k) {\n            left++;\n        }\n        max_requests = std::max(max_requests, right - left + 1);\n    }\n    std::cout << max_requests << std::endl;\n    return 0;\n}",
+                key_concepts=["sliding window", "two pointers", "O(N) time complexity"],
+                starter_code="#include <iostream>\n#include <vector>\n\n// Read n and k, then n timestamps, and output maximum requests within window k\nint main() {\n    int n, k;\n    std::cin >> n >> k;\n    // Implement your O(N) sliding window solution here\n    \n    return 0;\n}",
+                test_cases=[
+                    CustomTestCase(input="5 3\n1 2 3 5 6", expected_output="3"),
+                    CustomTestCase(input="4 1\n10 12 15 20", expected_output="1")
+                ]
+            )
+        ]
+
+    return JobDescriptionGenerateResponse(
+        title=title,
+        track=payload.track,
+        duration_minutes=payload.duration_minutes,
+        target_competency_radar=[TargetCompetencyItem(**c) for c in target_radar],
+        questions=questions
+    )

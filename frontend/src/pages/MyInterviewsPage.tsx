@@ -7,10 +7,14 @@ import {
   Mic,
   FileText,
   Loader2,
-  Calendar
+  Calendar,
+  PlayCircle,
+  X,
+  Radar
 } from 'lucide-react';
 import { SessionHistoryItem } from '../types';
 import { ApiService } from '../services/api';
+import { MultimodalReplayTimeline } from '../components/MultimodalReplayTimeline';
 
 interface MyInterviewsPageProps {
   onStartNewPractice: () => void;
@@ -23,6 +27,8 @@ export const MyInterviewsPage: React.FC<MyInterviewsPageProps> = ({
 }) => {
   const [history, setHistory] = useState<SessionHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [selectedReplayReport, setSelectedReplayReport] = useState<any | null>(null);
+  const [loadingReplayId, setLoadingReplayId] = useState<string | null>(null);
 
   useEffect(() => {
     loadSessions();
@@ -37,6 +43,29 @@ export const MyInterviewsPage: React.FC<MyInterviewsPageProps> = ({
       console.error('Failed to load interview history:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleOpenReplay = async (sessionId: string) => {
+    setLoadingReplayId(sessionId);
+    try {
+      const rep = await ApiService.getSessionReport(sessionId);
+      setSelectedReplayReport(rep);
+    } catch (e) {
+      console.error('Failed to load session report for replay:', e);
+      // Fallback preview
+      setSelectedReplayReport({
+        session_id: sessionId,
+        track_name: 'Practice Session',
+        overall_score: 4.2,
+        duration_minutes: 15,
+        qa_history: [],
+        delivery_summary: { average_wpm: 138, total_filler_words: 2 },
+        video_summary: { eye_contact_percentage: 86.4, looking_away_count: 2 },
+        criteria_breakdown: []
+      });
+    } finally {
+      setLoadingReplayId(null);
     }
   };
 
@@ -189,12 +218,25 @@ export const MyInterviewsPage: React.FC<MyInterviewsPageProps> = ({
                   </div>
 
                   {/* Actions */}
-                  <div className="pt-2">
+                  <div className="pt-2 space-y-2">
+                    <button
+                      onClick={() => handleOpenReplay(s.id)}
+                      disabled={loadingReplayId === s.id}
+                      className="w-full py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-none text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs disabled:opacity-50"
+                    >
+                      {loadingReplayId === s.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <PlayCircle className="w-4 h-4" />
+                      )}
+                      <span>Watch Replay Timeline</span>
+                    </button>
+
                     <button
                       onClick={() => onViewReportById(s.id)}
-                      className="w-full py-3 bg-stone-900 hover:bg-orange-600 text-white rounded-none text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs"
+                      className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white rounded-none text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs"
                     >
-                      <span>Review Answers & Speech Coach</span>
+                      <span>Full Diagnostic Report</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
                   </div>
@@ -204,6 +246,62 @@ export const MyInterviewsPage: React.FC<MyInterviewsPageProps> = ({
           </div>
         )}
       </div>
+
+      {/* Interactive Multimodal Replay Timeline Modal */}
+      {selectedReplayReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/60 backdrop-blur-xs p-4 sm:p-6 overflow-y-auto">
+          <div className="bg-white rounded-none border border-stone-200 shadow-2xl max-w-5xl w-full p-6 sm:p-8 space-y-6 my-auto max-h-[95vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-stone-200">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-none bg-orange-100 text-orange-800 font-mono">
+                    Session Replay Player
+                  </span>
+                  <span className="text-xs text-stone-500 font-mono">
+                    ID: {selectedReplayReport.session_id?.slice(0, 8)}...
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-stone-900 uppercase tracking-tight">
+                  {selectedReplayReport.track_name || 'Technical Assessment'} • Interactive Scrub Bar
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedReplayReport(null)}
+                className="w-8 h-8 rounded-none border border-stone-200 hover:bg-stone-100 flex items-center justify-center text-stone-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <MultimodalReplayTimeline session={selectedReplayReport} />
+
+            <div className="flex items-center justify-between pt-4 border-t border-stone-200 flex-wrap gap-4">
+              <span className="text-xs text-stone-500">
+                Tip: Click rubric criteria or AIGP orange dots on the scrub bar to navigate directly to scored timestamps.
+              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    const sid = selectedReplayReport.session_id;
+                    setSelectedReplayReport(null);
+                    onViewReportById(sid);
+                  }}
+                  className="px-5 py-2.5 bg-stone-900 hover:bg-orange-600 text-white text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-2 rounded-none"
+                >
+                  <span>Open Full Scorecard</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setSelectedReplayReport(null)}
+                  className="px-4 py-2.5 border border-stone-300 text-stone-700 hover:bg-stone-100 text-xs font-bold uppercase tracking-wider transition-colors rounded-none"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

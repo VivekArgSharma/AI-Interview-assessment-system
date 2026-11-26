@@ -932,5 +932,38 @@ export class ApiService {
     }
     return res.json();
   }
+
+  // ==================== JD-to-Rubric AI Generator ====================
+
+  static async generateInterviewFromJD(data: {
+    job_description: string;
+    track?: 'tech' | 'sales';
+    duration_minutes?: number;
+  }): Promise<{
+    title: string;
+    track: string;
+    duration_minutes: number;
+    target_competencies: Array<{ name: string; target_score: number; weight: number }>;
+    questions: Array<{
+      stage: string;
+      question_type: 'verbal' | 'coding_bug_fix' | 'coding_leetcode';
+      question_text: string;
+      correct_answer: string;
+      key_concepts: string[];
+      starter_code?: string;
+      test_cases?: Array<{ input: string; expected_output: string }>;
+    }>;
+  }> {
+    const res = await fetch(`${API_BASE_URL}/custom-interviews/generate-from-jd`, {
+      method: 'POST',
+      headers: this.getHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to auto-generate interview from Job Description.');
+    }
+    return res.json();
+  }
 }
 

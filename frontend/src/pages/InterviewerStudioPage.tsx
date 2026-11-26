@@ -236,6 +236,12 @@ export const InterviewerStudioPage: React.FC<InterviewerStudioPageProps> = ({
   const [submissionsModal, setSubmissionsModal] = useState<any | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // JD-to-Rubric AI Generator State
+  const [jdText, setJdText] = useState<string>('');
+  const [isGeneratingFromJd, setIsGeneratingFromJd] = useState<boolean>(false);
+  const [jdSuccessMsg, setJdSuccessMsg] = useState<string | null>(null);
+  const [targetCompetencies, setTargetCompetencies] = useState<Array<{ name: string; target_score: number; weight: number }>>([]);
+
   useEffect(() => {
     loadCreatedInterviews();
   }, [selectedTrack]);
@@ -382,6 +388,50 @@ export const InterviewerStudioPage: React.FC<InterviewerStudioPageProps> = ({
     setQuestions(updated);
   };
 
+  const handleGenerateFromJD = async () => {
+    if (!jdText.trim()) {
+      setErrorMsg('Please paste a Job Description (JD) first.');
+      return;
+    }
+    setIsGeneratingFromJd(true);
+    setErrorMsg(null);
+    setJdSuccessMsg(null);
+    try {
+      const generated = await ApiService.generateInterviewFromJD({
+        job_description: jdText.trim(),
+        track: selectedTrack,
+        duration_minutes: durationMinutes
+      });
+
+      if (generated.title) setTitle(generated.title);
+      if (generated.duration_minutes) setDurationMinutes(generated.duration_minutes);
+      if (generated.target_competencies) setTargetCompetencies(generated.target_competencies);
+
+      if (generated.questions && generated.questions.length > 0) {
+        setQuestions(generated.questions.map((q, idx) => ({
+          id: (idx + 1).toString(),
+          stage: q.stage,
+          question_type: q.question_type,
+          question_text: q.question_text,
+          correct_answer: q.correct_answer,
+          key_concepts_text: Array.isArray(q.key_concepts) ? q.key_concepts.join(', ') : '',
+          starter_code: q.starter_code || '',
+          test_cases: q.test_cases?.map((tc, tcIdx) => ({
+            id: `tc_${Date.now()}_${tcIdx}`,
+            input: tc.input,
+            expected_output: tc.expected_output
+          }))
+        })));
+      }
+      setJdSuccessMsg(`Generated ${generated.questions.length} tailored interview stages (verbal, bug fix, LeetCode C++) and ${generated.target_competencies?.length || 5} competency radar targets!`);
+    } catch (err: any) {
+      console.error('Failed to generate from JD:', err);
+      setErrorMsg(err.message || 'Failed to auto-generate interview from Job Description.');
+    } finally {
+      setIsGeneratingFromJd(false);
+    }
+  };
+
   const handleCreateInterview = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -427,7 +477,8 @@ export const InterviewerStudioPage: React.FC<InterviewerStudioPageProps> = ({
                 expected_output: tc.expected_output
               }))
             : []
-        }))
+        })),
+        target_competencies: targetCompetencies
       };
 
       const res = await ApiService.createCustomInterview(payload);
@@ -629,6 +680,109 @@ export const InterviewerStudioPage: React.FC<InterviewerStudioPageProps> = ({
           <span className="font-semibold">{errorMsg}</span>
         </div>
       )}
+
+      {/* AI JD-to-Rubric & Skill Radar Generator */}
+      <div className="bg-gradient-to-r from-stone-900 via-stone-850 to-stone-900 border border-orange-500/30 rounded-none p-6 sm:p-8 shadow-md text-white space-y-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-stone-800">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-none bg-orange-600 text-white font-mono">
+                AI Recruiter Magic
+              </span>
+              <span className="text-xs text-stone-400 font-mono">1-Click Synthesis</span>
+            </div>
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-orange-400" />
+              <span>Job Description (JD) to Interview Rubric & Competency Radar</span>
+            </h3>
+            <p className="text-xs text-stone-300 max-w-2xl leading-relaxed">
+              Paste any raw Job Description below. Our LLM agent extracts core competencies, establishes target benchmark radar polygons, and auto-generates balanced verbal questions, live C++ bug-fix drills, and algorithmic LeetCode challenges in 3 seconds.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block w-full md:w-auto">
+              Sample Templates:
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setJdText(`Staff Backend Infrastructure Engineer:
+We are looking for a Staff Backend Engineer to scale our distributed payment rails.
+Key responsibilities:
+- Design fault-tolerant distributed transaction processing handling 100k+ RPS.
+- Ensure strict idempotency, deadlock avoidance, and concurrency control.
+- Optimize high-throughput PostgreSQL and Redis caching layers.
+- Triage critical production memory leaks, iterator invalidation bugs, and latency spikes.`);
+              }}
+              className="text-[10px] font-mono px-2.5 py-1.5 bg-stone-800 hover:bg-stone-700 text-orange-300 border border-stone-700 transition-colors"
+            >
+              Staff Backend (Stripe)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setJdText(`Enterprise Account Executive - Strategic Cloud Accounts:
+Looking for a top-performing Enterprise AE to lead strategic multimillion-dollar software sales.
+Key responsibilities:
+- Lead consultative sales cycles across Fortune 500 C-suite stakeholders.
+- Execute mutual closing plans, value-based ROI modeling, and complex contract negotiations.
+- Overcome aggressive procurement price objections and executive hesitation.
+- Partner with technical solutions architects to de-escalate competitive bake-offs.`);
+              }}
+              className="text-[10px] font-mono px-2.5 py-1.5 bg-stone-800 hover:bg-stone-700 text-orange-300 border border-stone-700 transition-colors"
+            >
+              Enterprise AE (Datadog)
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <textarea
+            value={jdText}
+            onChange={(e) => setJdText(e.target.value)}
+            rows={4}
+            placeholder="Paste Job Description text here (e.g. Senior Backend Engineer with Distributed Systems, C++, High Concurrency, Microservices...)..."
+            className="w-full text-xs font-mono bg-stone-950 border border-stone-700 rounded-none p-3.5 text-stone-200 placeholder-stone-500 focus:border-orange-500 focus:outline-none resize-none"
+          />
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="text-xs text-stone-400">
+              {targetCompetencies.length > 0 && (
+                <span className="text-emerald-400 font-bold font-mono">
+                  ✓ {targetCompetencies.length} Benchmark Competency Targets Established for Spider Radar
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGenerateFromJD}
+              disabled={isGeneratingFromJd || !jdText.trim()}
+              className="px-6 py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white rounded-none text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs shrink-0"
+            >
+              {isGeneratingFromJd ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Synthesizing Rubric & Questions...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Auto-Generate Interview & Rubric</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {jdSuccessMsg && (
+          <div className="p-3 bg-emerald-950/60 border border-emerald-500/50 text-emerald-300 rounded-none text-xs flex items-center gap-2 font-mono">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{jdSuccessMsg}</span>
+          </div>
+        )}
+      </div>
 
       {/* Main Authoring Form */}
       <form onSubmit={handleCreateInterview} className="space-y-8">

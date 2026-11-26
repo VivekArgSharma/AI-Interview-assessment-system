@@ -21,6 +21,7 @@ from .text_encoder import TextEncoder
 from .report_generator import ReportGenerator
 from .fusion_model import MultimodalFusionModel
 from .llm_question_generator import LLMQuestionGenerator
+from .anti_cheat_service import AntiCheatService
 
 logger = logging.getLogger(__name__)
 
@@ -258,6 +259,26 @@ class InterviewSessionManager:
         )
         aigp_metrics = self.fusion_model.calculate_information_gain_metrics(fused_step)
 
+        # 5. Anti-Cheat: Analyze Real-Time LLM Teleprompter & Copilot Fingerprint
+        initial_silence = float(audio_analysis.get("initial_silence_seconds", 0.0)) if audio_analysis else 0.0
+        teleprompter_telemetry = AntiCheatService.analyze_teleprompter_fingerprint(
+            transcript=clean_transcript,
+            audio_metrics=audio_analysis,
+            initial_silence_sec=initial_silence,
+            video_metrics=video_metrics,
+            timestamp_sec=float(audio_duration_seconds or 20.0)
+        )
+        if teleprompter_telemetry["risk_tier"] in ["HIGH_PROBABILITY", "SUSPICIOUS"]:
+            from ..models.models import ScenarioEvent
+            event = ScenarioEvent(
+                session_id=session.id,
+                t_seconds=float(audio_duration_seconds or 20.0),
+                event_type="teleprompter_cadence_flag",
+                payload=teleprompter_telemetry
+            )
+            db.add(event)
+            db.flush()
+
         # Determine Adaptive Progression (Active Information-Gain Probe vs Next Question vs Early Stopping)
         stages = session.track.stages or []
         current_idx = session.current_stage_index
@@ -319,7 +340,8 @@ class InterviewSessionManager:
                     "projected_variance_reduction_pct": aigp_data["projected_variance_reduction_pct"],
                     "eligible_early_stopping": aigp_metrics["eligible_for_early_stopping"],
                     "information_sufficiency_certificate": aigp_metrics["information_sufficiency_certificate"]
-                }
+                },
+                "teleprompter_telemetry": teleprompter_telemetry
             }
 
         # Otherwise: advance to next stage or finish
@@ -365,7 +387,8 @@ class InterviewSessionManager:
                     "projected_variance_reduction_pct": 0.0,
                     "eligible_early_stopping": aigp_metrics["eligible_for_early_stopping"],
                     "information_sufficiency_certificate": aigp_metrics["information_sufficiency_certificate"]
-                }
+                },
+                "teleprompter_telemetry": teleprompter_telemetry
             }
         else:
             # Advance to Next Stage
@@ -412,7 +435,8 @@ class InterviewSessionManager:
                     "projected_variance_reduction_pct": 0.0,
                     "eligible_early_stopping": aigp_metrics["eligible_for_early_stopping"],
                     "information_sufficiency_certificate": aigp_metrics["information_sufficiency_certificate"]
-                }
+                },
+                "teleprompter_telemetry": teleprompter_telemetry
             }
 
     def _evaluate_answer_rubric(

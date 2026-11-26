@@ -264,21 +264,39 @@ class ReportGenerator:
                 needs_review = True
                 review_reasons.append(f"Confidence interval wide for {dim_name} (width: {dim_data['ci_width']})")
 
-        # 6. Integrity Notes (Anti-cheating D11, FR21)
+        # 6. Integrity Notes & Teleprompter Anti-Cheat Audit (PRD D11, FR21)
         integrity_events = db.query(ScenarioEvent).filter(
             ScenarioEvent.session_id == session.id,
-            ScenarioEvent.event_type.in_(["tab_blur", "paste"])
+            ScenarioEvent.event_type.in_(["tab_blur", "paste", "teleprompter_cadence_flag"])
         ).all()
         integrity_notes = []
+        teleprompter_flags = []
+        max_teleprompter_prob = 12.0
         if integrity_events:
             tab_blurs = len([e for e in integrity_events if e.event_type == "tab_blur"])
             pastes = len([e for e in integrity_events if e.event_type == "paste"])
+            teleprompter_events = [e for e in integrity_events if e.event_type == "teleprompter_cadence_flag"]
             if tab_blurs > 0:
                 integrity_notes.append(f"Observed {tab_blurs} tab focus loss event(s) during response formulation.")
             if pastes > 0:
                 integrity_notes.append(f"Observed {pastes} paste event(s) in editor. Word length remained consistent with candidate cadence.")
+            for te in teleprompter_events:
+                payload = te.payload or {}
+                prob = float(payload.get("teleprompter_probability_pct", 5.0))
+                if prob > max_teleprompter_prob:
+                    max_teleprompter_prob = prob
+                for flag in payload.get("anomaly_flags", []):
+                    teleprompter_flags.append(flag)
+                    integrity_notes.append(f"Teleprompter Guard: {flag}")
         else:
             integrity_notes.append("Continuous focus maintained. Zero unauthorized tab transitions or large paste anomalies.")
+
+        teleprompter_audit = {
+            "overall_teleprompter_risk_pct": max_teleprompter_prob,
+            "risk_tier": "HIGH_PROBABILITY" if max_teleprompter_prob >= 65 else ("SUSPICIOUS" if max_teleprompter_prob >= 40 else "ORGANIC_HUMAN"),
+            "flags_detected": teleprompter_flags,
+            "countermeasures_applied": "DYNAMIC_CONSTRAINT_INJECTION" if max_teleprompter_prob >= 65 else "PASSIVE_MONITORING"
+        }
 
         # 7. Strengths, Top 3 Improvement Areas & Practice Drills (Candidate Report D7)
         sorted_dims = sorted(fusion_result["dimensions"].items(), key=lambda x: x[1]["fused_score"], reverse=True)
@@ -301,6 +319,12 @@ class ReportGenerator:
                 "title": f"Drill for {dim}",
                 "instruction": f"Run a 5-minute practice session in Practice Mode focusing specifically on edge cases and failure modes in {dim}."
             })
+
+        # Derive target competencies for spider radar chart
+        target_competencies = [
+            {"name": dim_name, "target_score": 4.5, "weight": 1.0}
+            for dim_name in fusion_result["dimensions"].keys()
+        ]
 
         # 8. Check if session was routed to review queue
         if needs_review or session.needs_review:
@@ -342,7 +366,9 @@ class ReportGenerator:
                 "dimensions": fusion_result["dimensions"],
                 "criteria_breakdown": criteria_breakdown,
                 "aigp_audit_trail": aigp_audit_trail,
-                "information_sufficiency_certificate": aigp_metrics["information_sufficiency_certificate"]
+                "information_sufficiency_certificate": aigp_metrics["information_sufficiency_certificate"],
+                "teleprompter_audit": teleprompter_audit,
+                "target_competencies": target_competencies
             }
         )
         db.add(report)
