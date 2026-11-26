@@ -19,6 +19,8 @@ from ..models.models import (
 )
 from .text_encoder import TextEncoder
 from .report_generator import ReportGenerator
+from .fusion_model import MultimodalFusionModel
+from .llm_question_generator import LLMQuestionGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,7 @@ class InterviewSessionManager:
 
     def __init__(self, encoder: Optional[TextEncoder] = None):
         self.encoder = encoder or TextEncoder.get_instance()
+        self.fusion_model = MultimodalFusionModel()
 
     def create_session(
         self,
@@ -242,38 +245,56 @@ class InterviewSessionManager:
         # 3. Evaluate Rubric Criteria against Candidate Transcript
         stage_assessments = self._evaluate_answer_rubric(db, answer, question, clean_transcript)
 
-        # 4. Determine Adaptive Progression (Follow-up vs Next Stage vs Completion)
+        # 4. Multimodal Fusion & Epistemic Uncertainty Quantification (PRD D3, D4)
+        raw_text_scores = {
+            a["criterion_name"]: max(1.0, min(5.0, float(a["score"]) * (5.0 / max(1.0, float(a.get("maximum_score", 3.0))))))
+            for a in stage_assessments
+        } if stage_assessments else {"Content & Reasoning": 3.0}
+
+        fused_step = self.fusion_model.fuse_scores(
+            text_scores=raw_text_scores,
+            voice_delivery=audio_analysis or {},
+            video_features=video_metrics
+        )
+        aigp_metrics = self.fusion_model.calculate_information_gain_metrics(fused_step)
+
+        # Determine Adaptive Progression (Active Information-Gain Probe vs Next Question vs Early Stopping)
         stages = session.track.stages or []
         current_idx = session.current_stage_index
         current_stage = stages[current_idx] if current_idx < len(stages) else None
 
-        # Check if we should trigger an adaptive follow-up
-        should_followup = False
-        if (
+        # Check if we should trigger an Active Information-Gain Probe
+        most_uncertain_dim = aigp_metrics.get("most_uncertain_dimension") or (current_stage.get("title") if current_stage else "Technical Depth")
+        weak_scores = [a["score"] for a in stage_assessments if a["score"] <= 1]
+        should_followup = bool(
             session.follow_up_count_current_stage == 0
-            and current_stage
-            and question.question_type == "initial"
-        ):
-            # Check if key concepts or criteria were missed or weak
-            weak_scores = [a["score"] for a in stage_assessments if a["score"] <= 1]
-            if len(weak_scores) >= 1 or len(clean_transcript.split()) < 15:
-                should_followup = True
+            and question.question_type in ["initial", "standard"]
+            and (aigp_metrics.get("requires_active_probe") or len(weak_scores) >= 1 or len(clean_transcript.split()) < 15)
+        )
 
         total_q_count = db.query(Question).filter(Question.session_id == session.id).count()
 
-        if should_followup and current_stage:
-            # Generate adaptive follow-up question
+        if should_followup:
             session.follow_up_count_current_stage = 1
-            followup_prompt = current_stage.get("followup_prompt") or "Could you elaborate on the specific steps you would take?"
-            
+
+            # Synthesize active information-gain probe
+            aigp_data = LLMQuestionGenerator.generate_active_information_gain_probe(
+                parent_question=question.question_text,
+                candidate_answer=clean_transcript,
+                target_dimension=most_uncertain_dim,
+                expected_concepts=current_stage.get("expected_concepts", []) if current_stage else []
+            )
+            probe_text = aigp_data["selected_probe_text"]
+
             follow_up_q = Question(
                 session_id=session.id,
-                question_text=followup_prompt,
-                question_type="follow_up",
+                question_text=probe_text,
+                question_type="active_probe",
                 sequence_number=total_q_count + 1,
-                interview_stage=current_stage.get("stage_id", session.current_stage),
-                context_notes=f"Follow-up probe for {current_stage.get('title', '')}",
-                expected_concepts=current_stage.get("expected_concepts", [])
+                interview_stage=question.interview_stage,
+                targeted_dimension=most_uncertain_dim,
+                context_notes=f"Active Information-Gain Probe for {most_uncertain_dim} (EIG: {aigp_data['expected_info_gain_nats']} nats)",
+                expected_concepts=question.expected_concepts
             )
             db.add(follow_up_q)
             db.commit()
@@ -284,11 +305,21 @@ class InterviewSessionManager:
                 "stage": question.interview_stage,
                 "transcript": clean_transcript,
                 "next_action": "follow_up",
-                "message": "Follow-up question generated to probe deeper into your answer.",
+                "is_active_probe": True,
+                "message": f"Active Information-Gain Probe generated targeting {most_uncertain_dim} (EIG: {aigp_data['expected_info_gain_nats']} nats).",
                 "follow_up_question": follow_up_q,
                 "next_question": None,
                 "stage_assessments": stage_assessments,
-                "audio_metrics": audio_analysis
+                "audio_metrics": audio_analysis,
+                "aigp_telemetry": {
+                    "target_dimension": most_uncertain_dim,
+                    "prior_entropy_nats": aigp_metrics["max_entropy"],
+                    "mean_entropy_nats": aigp_metrics["mean_interview_entropy"],
+                    "expected_info_gain_nats": aigp_data["expected_info_gain_nats"],
+                    "projected_variance_reduction_pct": aigp_data["projected_variance_reduction_pct"],
+                    "eligible_early_stopping": aigp_metrics["eligible_for_early_stopping"],
+                    "information_sufficiency_certificate": aigp_metrics["information_sufficiency_certificate"]
+                }
             }
 
         # Otherwise: advance to next stage or finish
@@ -325,7 +356,16 @@ class InterviewSessionManager:
                 "follow_up_question": None,
                 "next_question": None,
                 "stage_assessments": stage_assessments,
-                "audio_metrics": audio_analysis
+                "audio_metrics": audio_analysis,
+                "aigp_telemetry": {
+                    "target_dimension": most_uncertain_dim,
+                    "prior_entropy_nats": aigp_metrics["max_entropy"],
+                    "mean_entropy_nats": aigp_metrics["mean_interview_entropy"],
+                    "expected_info_gain_nats": 0.0,
+                    "projected_variance_reduction_pct": 0.0,
+                    "eligible_early_stopping": aigp_metrics["eligible_for_early_stopping"],
+                    "information_sufficiency_certificate": aigp_metrics["information_sufficiency_certificate"]
+                }
             }
         else:
             # Advance to Next Stage
@@ -363,7 +403,16 @@ class InterviewSessionManager:
                 "follow_up_question": None,
                 "next_question": next_q,
                 "stage_assessments": stage_assessments,
-                "audio_metrics": audio_analysis
+                "audio_metrics": audio_analysis,
+                "aigp_telemetry": {
+                    "target_dimension": most_uncertain_dim,
+                    "prior_entropy_nats": aigp_metrics["max_entropy"],
+                    "mean_entropy_nats": aigp_metrics["mean_interview_entropy"],
+                    "expected_info_gain_nats": 0.0,
+                    "projected_variance_reduction_pct": 0.0,
+                    "eligible_early_stopping": aigp_metrics["eligible_for_early_stopping"],
+                    "information_sufficiency_certificate": aigp_metrics["information_sufficiency_certificate"]
+                }
             }
 
     def _evaluate_answer_rubric(

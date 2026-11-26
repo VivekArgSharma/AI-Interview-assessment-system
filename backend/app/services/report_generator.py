@@ -214,6 +214,33 @@ class ReportGenerator:
             delivery_weight=0.20,
             presentation_weight=active_video_weight
         )
+        aigp_metrics = fusion_engine.calculate_information_gain_metrics(fusion_result)
+
+        # Active Probes Query
+        active_probe_questions = db.query(Question).filter(
+            Question.session_id == session.id,
+            Question.question_type == "active_probe"
+        ).all()
+
+        aigp_audit_trail = {
+            "probes_triggered_count": len(active_probe_questions),
+            "mean_interview_entropy_nats": aigp_metrics["mean_interview_entropy"],
+            "max_entropy_nats": aigp_metrics["max_entropy"],
+            "most_uncertain_dimension": aigp_metrics["most_uncertain_dimension"],
+            "entropy_by_dimension": aigp_metrics["entropy_by_dimension"],
+            "dimension_uncertainty_ranks": aigp_metrics["dimension_uncertainty_ranks"],
+            "information_sufficiency_certificate": aigp_metrics["information_sufficiency_certificate"],
+            "probed_dimensions": [
+                {
+                    "question_id": q.id,
+                    "target_dimension": q.targeted_dimension or "Technical Reasoning",
+                    "question_text": q.question_text,
+                    "sequence_number": q.sequence_number,
+                    "context_notes": q.context_notes
+                }
+                for q in active_probe_questions
+            ]
+        }
 
         # 5. Persist Score records in DB
         needs_review = False
@@ -313,7 +340,9 @@ class ReportGenerator:
                 "method": "prism_multimodal_5head_ensemble",
                 "max_score": 5.0,
                 "dimensions": fusion_result["dimensions"],
-                "criteria_breakdown": criteria_breakdown
+                "criteria_breakdown": criteria_breakdown,
+                "aigp_audit_trail": aigp_audit_trail,
+                "information_sufficiency_certificate": aigp_metrics["information_sufficiency_certificate"]
             }
         )
         db.add(report)

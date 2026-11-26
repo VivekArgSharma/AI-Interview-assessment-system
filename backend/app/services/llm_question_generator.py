@@ -490,3 +490,111 @@ class LLMQuestionGenerator:
             results.append(q)
 
         return results
+
+    # ----------------- Active Information-Gain Probe Synthesis -----------------
+
+    @classmethod
+    def generate_active_information_gain_probe(
+        cls,
+        parent_question: str,
+        candidate_answer: str,
+        target_dimension: str,
+        expected_concepts: Optional[List[str]] = None,
+        code_context: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Active Information-Gain Probing (AIGP) Synthesis.
+        Synthesizes 3 candidate surgical probes targeted at resolving epistemic uncertainty
+        in `target_dimension`, ranks them using the fusion engine's Expected Information Gain (EIG),
+        and returns the top-ranked probe with its mathematical variance reduction metrics.
+        """
+        from .fusion_model import MultimodalFusionModel
+        fusion = MultimodalFusionModel()
+
+        probes = cls._synthesize_probe_candidates(
+            parent_question=parent_question,
+            candidate_answer=candidate_answer,
+            target_dimension=target_dimension,
+            expected_concepts=expected_concepts or [],
+            code_context=code_context
+        )
+
+        ranked = fusion.rank_candidate_probes_by_eig(
+            candidate_probes=probes,
+            target_dimension=target_dimension,
+            prior_std_error=0.34
+        )
+
+        selected_probe = ranked[0]
+        return {
+            "selected_probe_text": selected_probe["probe_text"],
+            "expected_info_gain_nats": selected_probe["expected_info_gain_nats"],
+            "projected_variance_reduction_pct": selected_probe["projected_variance_reduction_pct"],
+            "target_dimension": target_dimension,
+            "all_ranked_candidates": ranked,
+            "hypothesis": f"Probing {target_dimension} directly to collapse epistemic variance between novice ambiguity and senior architectural execution."
+        }
+
+    @classmethod
+    def _synthesize_probe_candidates(
+        cls,
+        parent_question: str,
+        candidate_answer: str,
+        target_dimension: str,
+        expected_concepts: List[str],
+        code_context: Optional[str]
+    ) -> List[str]:
+        """
+        Generates 3 domain-calibrated surgical candidate probes.
+        """
+        ans_low = candidate_answer.lower()
+        dim_low = target_dimension.lower()
+
+        is_technical = any(k in dim_low for k in ["technical", "code", "system", "architecture", "debugging", "reasoning"]) or code_context is not None
+
+        if is_technical:
+            concept_snippet = expected_concepts[0] if expected_concepts else "this mechanism"
+            return [
+                (
+                    f"You mentioned this approach, but if two concurrent workers execute this operation at the exact same "
+                    f"millisecond, what specific synchronization or lock mechanism prevents a race condition or data corruption?"
+                ),
+                (
+                    f"In terms of system boundaries, how does your proposed solution scale when throughput spikes by 10x, "
+                    f"and what is the exact trade-off between memory footprint and latency?"
+                ),
+                (
+                    f"What happens if a partial network timeout occurs during execution—specifically if the downstream service "
+                    f"succeeds but the local acknowledgment drops? How is idempotency guaranteed on retry?"
+                )
+            ]
+        elif any(k in dim_low for k in ["sales", "objection", "customer", "discovery", "negotiation"]):
+            return [
+                (
+                    "When the customer firmly pushes back on the pricing and refuses the initial compromise, what exact "
+                    "diagnostic discovery question do you ask next to uncover their true underlying constraint?"
+                ),
+                (
+                    "How do you mathematically demonstrate the business ROI and opportunity cost to shift their perspective "
+                    "from upfront expenditure to risk mitigation?"
+                ),
+                (
+                    "If the stakeholder insists on an unfeasible contract SLA, how do you negotiate that boundary without "
+                    "compromising relationship trust?"
+                )
+            ]
+        else:
+            return [
+                (
+                    f"To make your reasoning concrete for {target_dimension}: what is one specific failure mode or edge case "
+                    f"you encountered with this strategy, and how did you resolve it?"
+                ),
+                (
+                    f"Could you articulate the primary trade-off of this decision—what critical advantage did you prioritize, "
+                    f"and what did you deliberately sacrifice?"
+                ),
+                (
+                    f"How would you measure the empirical success of this solution in production to verify it actually solved "
+                    f"the root problem?"
+                )
+            ]

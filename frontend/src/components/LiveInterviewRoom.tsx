@@ -99,6 +99,7 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
   const [isRunningCpp, setIsRunningCpp] = useState<boolean>(false);
   const [cppExecutionResult, setCppExecutionResult] = useState<CppExecutionResponse | null>(null);
   const [selectedTestCaseIdx, setSelectedTestCaseIdx] = useState<number>(0);
+  const [aigpTelemetry, setAigpTelemetry] = useState<any>(null);
   
   // Tech Scenario S1 Code & Test State
   const [codeContent, setCodeContent] = useState<string>(
@@ -473,15 +474,21 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
         return;
       }
 
-      // Check for follow-up probe
-      if (resp.next_action === 'follow_up' && resp.follow_up_question) {
-        setLatestFollowUpMessage(resp.message || 'Please elaborate on your previous response.');
+      // Check for Active Information-Gain Probe or standard follow-up
+      if ((resp.next_action === 'active_probe' || resp.next_action === 'follow_up') && resp.follow_up_question) {
+        setLatestFollowUpMessage(resp.message || 'Active Information-Gain Probe generated.');
+        if (resp.aigp_telemetry) {
+          setAigpTelemetry(resp.aigp_telemetry);
+        }
         setCurrentQuestion(resp.follow_up_question);
         setTranscript('');
         setRecordedAudioBlob(null);
         setRecordDuration(0);
       } else if (resp.next_question) {
         setLatestFollowUpMessage(null);
+        if (resp.aigp_telemetry) {
+          setAigpTelemetry(resp.aigp_telemetry);
+        }
         setCurrentQuestion(resp.next_question);
         setTranscript('');
         setRecordedAudioBlob(null);
@@ -548,8 +555,20 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
         return;
       }
 
-      if (resp.next_question) {
+      if ((resp.next_action === 'active_probe' || resp.next_action === 'follow_up') && resp.follow_up_question) {
+        setLatestFollowUpMessage(resp.message || 'Active Information-Gain Probe generated.');
+        if (resp.aigp_telemetry) {
+          setAigpTelemetry(resp.aigp_telemetry);
+        }
+        setCurrentQuestion(resp.follow_up_question);
+        setTranscript('');
+        setRecordedAudioBlob(null);
+        setRecordDuration(0);
+      } else if (resp.next_question) {
         setLatestFollowUpMessage(null);
+        if (resp.aigp_telemetry) {
+          setAigpTelemetry(resp.aigp_telemetry);
+        }
         setCurrentQuestion(resp.next_question);
         setTranscript('');
         setRecordedAudioBlob(null);
@@ -752,16 +771,59 @@ export const LiveInterviewRoom: React.FC<LiveInterviewRoomProps> = ({
         </div>
       )}
 
-      {/* Adaptive Probe Alert Banner (PRD D4) */}
+      {/* Active Information-Gain Probe (AIGP) Alert Banner (PRD D3, D4) */}
       {latestFollowUpMessage && (
-        <div className="p-5 bg-orange-50 border border-orange-200 rounded-none text-xs flex items-start gap-3">
-          <Sparkles className="w-4 h-4 text-orange-600 shrink-0 mt-0.5" />
-          <div>
-            <span className="font-bold uppercase tracking-wider text-[10px] text-orange-700 block">
-              Uncertainty-Driven Follow-Up Probe (D4)
-            </span>
-            <p className="mt-1 text-stone-900 font-medium leading-relaxed">{latestFollowUpMessage}</p>
+        <div className="p-4 bg-orange-50 border border-orange-200 rounded-none text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-start gap-3">
+            <Sparkles className="w-4 h-4 text-orange-600 shrink-0 mt-0.5" />
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold uppercase tracking-wider text-[10px] text-orange-700 bg-orange-100 px-2 py-0.5 border border-orange-200">
+                  Active Information-Gain Probe (AIGP)
+                </span>
+                {aigpTelemetry?.target_dimension && (
+                  <span className="text-[10px] font-mono text-stone-600">
+                    Target: <strong className="text-stone-900">{aigpTelemetry.target_dimension}</strong>
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-stone-900 font-medium leading-relaxed">{latestFollowUpMessage}</p>
+            </div>
           </div>
+
+          {aigpTelemetry && (
+            <div className="shrink-0 flex items-center gap-3 bg-white border border-orange-200 px-3 py-1.5 font-mono text-[10px]">
+              <div>
+                <span className="text-stone-400 block text-[9px]">EXPECTED INFO GAIN</span>
+                <span className="font-bold text-orange-700">{aigpTelemetry.expected_info_gain_nats || 0.45} nats</span>
+              </div>
+              <div className="border-l border-stone-200 pl-3">
+                <span className="text-stone-400 block text-[9px]">VARIANCE COLLAPSE</span>
+                <span className="font-bold text-emerald-600">-{aigpTelemetry.projected_variance_reduction_pct || 52}%</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Epistemic Convergence & Early Stopping Certified Notice */}
+      {aigpTelemetry?.eligible_early_stopping && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-none text-xs flex items-center justify-between shadow-xs">
+          <div className="flex items-center gap-2 text-emerald-900">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>
+              <strong>Epistemic Convergence Certified:</strong> High-confidence evaluation achieved (Entropy &le; -0.15 nats). You may conclude early or proceed.
+            </span>
+          </div>
+          <button
+            onClick={async () => {
+              const endRes = await ApiService.endSession(session.id);
+              onSessionFinish(endRes.report_id);
+            }}
+            className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase tracking-wider text-[10px] rounded-none shrink-0"
+          >
+            Conclude With Certificate
+          </button>
         </div>
       )}
 

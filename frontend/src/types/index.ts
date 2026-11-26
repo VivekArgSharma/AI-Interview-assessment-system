@@ -310,12 +310,28 @@ export interface AnswerResponseData {
   question_id: string;
   stage: string;
   transcript: string;
-  next_action: 'follow_up' | 'next_stage' | 'completed';
+  next_action: 'follow_up' | 'next_stage' | 'completed' | 'active_probe';
   message: string;
   follow_up_question?: QuestionData | null;
   next_question?: QuestionData | null;
   stage_assessments: CriterionAssessmentItem[];
   audio_metrics?: AudioAnalysisResponse | null;
+  aigp_telemetry?: {
+    target_dimension: string;
+    prior_entropy_nats: number;
+    mean_entropy_nats: number;
+    expected_info_gain_nats: number;
+    projected_variance_reduction_pct: number;
+    eligible_early_stopping: boolean;
+    information_sufficiency_certificate?: {
+      issued: boolean;
+      status: string;
+      epistemic_confidence_pct: number;
+      mean_entropy_nats: number;
+      max_entropy_nats: number;
+      criterion_statement: string;
+    };
+  } | null;
 }
 
 export interface SessionReportData {

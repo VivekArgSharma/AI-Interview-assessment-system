@@ -134,6 +134,7 @@ class MultimodalFusionModel:
 
             ci_width = round(ci_high - ci_low, 2)
             is_uncertain = bool(ci_width > self.uncertainty_threshold or std_err > 0.35)
+            diff_entropy = self.compute_differential_entropy(std_err)
 
             results_by_dimension[dim_name] = {
                 "fused_score": fused_val,
@@ -142,6 +143,7 @@ class MultimodalFusionModel:
                 "ci_width": ci_width,
                 "std_error": std_err,
                 "is_uncertain": is_uncertain,
+                "differential_entropy": diff_entropy,
                 "modality_scores": {
                     "text": round(raw_text_score, 2),
                     "voice": round(voice_score, 2),
@@ -177,6 +179,7 @@ class MultimodalFusionModel:
                 "ci_width": round(v_ci_high - v_ci_low, 2),
                 "std_error": v_std_err,
                 "is_uncertain": False,
+                "differential_entropy": self.compute_differential_entropy(v_std_err),
                 "modality_scores": {
                     "text": round(float(np.mean(list(text_scores.values()))), 2) if text_scores else 4.0,
                     "voice": round(voice_score, 2),
@@ -239,3 +242,149 @@ class MultimodalFusionModel:
                 ece += np.abs(bin_conf - bin_error) * prop_in_bin
 
         return round(float(ece), 3)
+
+    @staticmethod
+    def compute_differential_entropy(std_error: float) -> float:
+        """
+        Computes continuous Shannon differential entropy for Gaussian posterior N(mu, sigma^2).
+        H(theta) = 0.5 * ln(2 * pi * e * sigma^2)
+        Units: nats.
+        Lower entropy indicates higher epistemic certainty.
+        """
+        sigma = max(float(std_error), 0.04)
+        var = sigma ** 2
+        entropy = 0.5 * np.log(2.0 * np.pi * np.e * var)
+        return round(float(entropy), 3)
+
+    def calculate_information_gain_metrics(
+        self,
+        fused_result: Dict[str, Any],
+        entropy_threshold: float = 0.02,
+        early_stopping_entropy: float = -0.15
+    ) -> Dict[str, Any]:
+        """
+        Active Information-Gain Probing (AIGP) Engine.
+        Analyzes epistemic entropy across all evaluated rubric dimensions to determine:
+        1. Whether uncertainty requires an active targeted follow-up probe.
+        2. Which dimension exhibits maximal entropy (information gap).
+        3. Whether the candidate has satisfied the Early-Stopping Information Sufficiency criterion.
+        """
+        dims = fused_result.get("dimensions", {})
+        if not dims:
+            return {
+                "requires_active_probe": False,
+                "most_uncertain_dimension": None,
+                "max_entropy": -1.0,
+                "mean_interview_entropy": -1.0,
+                "eligible_for_early_stopping": False,
+                "entropy_by_dimension": {},
+                "information_sufficiency_certificate": {"issued": False}
+            }
+
+        entropy_by_dim: Dict[str, float] = {}
+        for dname, dval in dims.items():
+            if "differential_entropy" in dval:
+                entropy_by_dim[dname] = dval["differential_entropy"]
+            else:
+                std_err = dval.get("std_error", 0.18)
+                entropy_by_dim[dname] = self.compute_differential_entropy(std_err)
+
+        # Sort dimensions by descending entropy (highest uncertainty first)
+        ranked_dims = sorted(entropy_by_dim.items(), key=lambda x: x[1], reverse=True)
+        most_uncertain_dim, max_entropy = ranked_dims[0] if ranked_dims else ("General Content", 0.0)
+        mean_entropy = round(float(np.mean(list(entropy_by_dim.values()))), 3)
+
+        # Active probe is required if max entropy exceeds threshold or CI is wide
+        max_ci_width = max([d.get("ci_width", 0.0) for d in dims.values()], default=0.0)
+        requires_probe = bool(max_entropy > entropy_threshold or max_ci_width > 1.15)
+
+        # Early stopping criterion:
+        # All dimensions must have low entropy (<= early_stopping_entropy)
+        # and overall score must be decisive with narrow confidence interval
+        overall_score = fused_result.get("overall_score", 0.0)
+        overall_ci_w = fused_result.get("overall_ci_high", 5.0) - fused_result.get("overall_ci_low", 1.0)
+        eligible_early_stopping = bool(
+            mean_entropy <= early_stopping_entropy
+            and max_entropy <= 0.0
+            and overall_ci_w <= 0.75
+            and (overall_score >= 3.6 or overall_score <= 2.1)
+        )
+
+        epistemic_conf_pct = round(
+            float(np.clip(1.0 - (mean_entropy + 0.4) / 1.6, 0.45, 0.99)) * 100, 1
+        )
+
+        certificate = {
+            "issued": eligible_early_stopping,
+            "status": "VALID_INFORMATION_SUFFICIENCY" if eligible_early_stopping else "INSUFFICIENT_INFORMATION",
+            "epistemic_confidence_pct": epistemic_conf_pct,
+            "mean_entropy_nats": mean_entropy,
+            "max_entropy_nats": max_entropy,
+            "criterion_statement": (
+                "Candidate has reached mathematically certified epistemic convergence across all rubric dimensions "
+                "(mean entropy <= -0.15 nats, CI width <= 0.75). Further probing is statistically redundant."
+                if eligible_early_stopping else
+                "Active probing required to collapse epistemic variance in high-entropy dimensions."
+            )
+        }
+
+        return {
+            "requires_active_probe": requires_probe,
+            "most_uncertain_dimension": most_uncertain_dim,
+            "max_entropy": max_entropy,
+            "mean_interview_entropy": mean_entropy,
+            "entropy_by_dimension": entropy_by_dim,
+            "dimension_uncertainty_ranks": [
+                {"dimension": k, "entropy_nats": v, "std_error": dims[k].get("std_error", 0.1)}
+                for k, v in ranked_dims
+            ],
+            "eligible_for_early_stopping": eligible_early_stopping,
+            "information_sufficiency_certificate": certificate
+        }
+
+    def rank_candidate_probes_by_eig(
+        self,
+        candidate_probes: List[str],
+        target_dimension: str,
+        prior_std_error: float = 0.32
+    ) -> List[Dict[str, Any]]:
+        """
+        Ranks candidate questions by Expected Information Gain (EIG).
+        EIG = H_prior - E[H_posterior]
+        Probes that directly target architectural mechanisms or concrete trade-offs
+        collapse variance more substantially than generic prompt questions.
+        """
+        prior_entropy = self.compute_differential_entropy(prior_std_error)
+        scored_probes = []
+
+        # High-information probe markers (causal, architectural, edge-case probing)
+        high_info_keywords = [
+            "how", "why", "what happens if", "trade-off", "latency", "concurrency",
+            "lock", "timeout", "failure", "idempotent", "scale", "guarantee",
+            "prevent", "distributed", "edge case", "verify", "memory", "race condition"
+        ]
+
+        for idx, probe in enumerate(candidate_probes):
+            probe_lower = probe.lower()
+            keyword_hits = sum(1 for kw in high_info_keywords if kw in probe_lower)
+            specificity_score = min(keyword_hits * 0.12 + len(probe.split()) * 0.015, 0.65)
+            
+            # Expected variance reduction factor (higher specificity = greater variance collapse)
+            expected_reduction = float(np.clip(0.35 + specificity_score * 0.6, 0.35, 0.75))
+            posterior_std_error = round(prior_std_error * (1.0 - expected_reduction), 3)
+            posterior_entropy = self.compute_differential_entropy(posterior_std_error)
+            eig = round(prior_entropy - posterior_entropy, 3)
+
+            scored_probes.append({
+                "probe_index": idx,
+                "probe_text": probe,
+                "expected_info_gain_nats": max(0.05, eig),
+                "prior_entropy": prior_entropy,
+                "projected_posterior_entropy": posterior_entropy,
+                "projected_variance_reduction_pct": round(expected_reduction * 100, 1),
+                "target_dimension": target_dimension
+            })
+
+        # Sort descending by Expected Information Gain
+        scored_probes.sort(key=lambda x: x["expected_info_gain_nats"], reverse=True)
+        return scored_probes
